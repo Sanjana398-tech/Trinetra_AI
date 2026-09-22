@@ -1,0 +1,98 @@
+/* ==========================================================================
+   TRINETRA AI — Base / Reset
+   ========================================================================== */
+
+* , *::before, *::after { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+html, body { max-width: 100%; overflow-x: hidden; }
+
+img, svg, canvas { max-width: 100%; }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--void);
+  color: var(--text-hi);
+  font-family: var(--font-body);
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  margin: 0 0 0.4em 0;
+  color: var(--text-hi);
+}
+
+h1 { font-size: 1.9rem; }
+h2 { font-size: 1.35rem; }
+h3 { font-size: 1.05rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-mid); }
+
+p { margin: 0 0 1em 0; color: var(--text-mid); }
+
+a { color: var(--eye-cyan); text-decoration: none; }
+a:hover { color: var(--text-hi); }
+
+ul, ol { padding-left: 1.2em; color: var(--text-mid); }
+
+code, .mono, .data-value { font-family: var(--font-mono); }
+
+button { font-family: inherit; cursor: pointer; }
+
+/* Accessible focus ring everywhere */
+:focus-visible {
+  outline: 2px solid var(--eye-cyan);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+::selection { background: var(--eye-cyan); color: var(--void); }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: var(--bg-1); }
+::-webkit-scrollbar-thumb { background: var(--surface-raised); border-radius: 8px; border: 2px solid var(--bg-1); }
+::-webkit-scrollbar-thumb:hover { background: var(--eye-cyan-dim); }
+
+.container { max-width: 1400px; margin: 0 auto; }
+
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0;
+}
+
+/* ========================================================================== 
+   LIGHT MODE OVERRIDES
+   ========================================================================== */
+
+html.light-mode a {
+  color: var(--eye-cyan);
+}
+
+html.light-mode a:hover {
+  color: var(--text-hi);
+}
+
+html.light-mode ::selection {
+  background: var(--eye-cyan);
+  color: #ffffff;
+}
+
+html.light-mode ::-webkit-scrollbar-track {
+  background: var(--bg-1);
+}
+
+html.light-mode ::-webkit-scrollbar-thumb {
+  background: rgba(0, 146, 168, 0.3);
+  border-color: var(--bg-1);
+}
+
+html.light-mode ::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 146, 168, 0.5);
+}

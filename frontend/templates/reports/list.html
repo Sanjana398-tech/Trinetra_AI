@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% from "partials/icons.html" import icon %}
+
+{% block content %}
+<div class="section-eyebrow">Report Generator</div>
+<h2 style="margin-bottom:6px;">Download a scan report</h2>
+<p style="max-width:620px; margin-bottom:22px;">
+  Every scan can be exported as a PDF: input, verdict, confidence, reasons, and
+  recommendations — useful for records or sharing with someone else.
+</p>
+
+<div class="glass-panel">
+  <div class="panel-body table-scroll">
+    {% if records %}
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Channel</th>
+          <th>Input</th>
+          <th>Verdict</th>
+          <th>Scanned</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% set icon_for_type = {'message':'message-square','url':'link','qr':'qr-code','voice':'mic','screenshot':'image'} %}
+        {% for scan in records %}
+        <tr>
+          <td><span class="type-chip">{{ icon(icon_for_type.get(scan.scan_type, 'activity')) }}{{ scan.scan_type|capitalize }}</span></td>
+          <td class="cell-primary" style="max-width:300px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+            <a href="{{ url_for('history.view_record', record_id=scan.id) }}" style="color:inherit;">{{ scan.input_summary }}</a>
+          </td>
+          <td><span class="badge badge-{{ scan.verdict }}">{{ scan.verdict|verdict_label }}</span></td>
+          <td class="cell-mono">{{ scan.created_at.strftime('%d %b, %I:%M %p') }}</td>
+          <td>
+            <a href="{{ url_for('reports.download_report', record_id=scan.id) }}" class="btn btn-ghost btn-sm">
+              {{ icon('download') }} PDF
+            </a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state">
+      {{ icon('file-text') }}
+      <h3>No scans yet</h3>
+      <p>Run a scan from any module and its report will show up here.</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

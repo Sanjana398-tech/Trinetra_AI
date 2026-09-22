@@ -1,0 +1,25 @@
+{
+    "gnn_feature_columns": [
+        "amount",
+        "hour_of_day",
+        "is_weekend",
+        "is_night_transaction",
+        "time_since_last_txn_min",
+        "user_avg_monthly_txn",
+        "user_avg_txn_value",
+        "user_loyalty_score",
+        "new_device_flag",
+        "ip_location_mismatch",
+        "failed_attempts_last_24h",
+        "transaction_velocity",
+        "amount_deviation_score",
+        "recurring_payment_flag",
+        "balance_after_transaction"
+    ],
+    "gnn_input_features": 15,
+    "gnn_embedding_features": 32,
+    "xgboost_features": 47,
+    "num_graph_nodes": 2400,
+    "num_graph_edges": 20000,
+    "threshold": 0.4
+}

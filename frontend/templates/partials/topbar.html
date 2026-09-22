@@ -1,0 +1,48 @@
+{% from "partials/icons.html" import icon %}
+<header class="topbar">
+  <div class="topbar-left">
+    <button class="icon-btn" id="sidebarToggle" aria-label="Toggle navigation">
+      {{ icon('menu') }}
+    </button>
+    <div class="page-title">
+      <h1>{{ page_title|default('Dashboard') }}</h1>
+      <div class="breadcrumb">TRINETRA AI / {{ page_title|default('Dashboard') }}</div>
+    </div>
+  </div>
+
+  <div class="topbar-right">
+    <form method="get" action="{{ url_for('set_language', language=language) }}" class="language-picker">
+      <label for="languageSelect" class="sr-only">Language</label>
+      <select id="languageSelect" onchange="this.form.action='/language/' + this.value; this.form.submit()" aria-label="Language">
+        {% for code, label in languages.items() %}<option value="{{ code }}" {{ 'selected' if code == language }}>{{ label }}</option>{% endfor %}
+      </select>
+    </form>
+    <div class="search-box">
+      {{ icon('search') }}
+      <input type="search" placeholder="Search scans, URLs, reports..." aria-label="Search">
+    </div>
+    <button class="icon-btn notif-btn" aria-label="Notifications">
+      {{ icon('bell') }}
+      <span class="notif-dot" aria-hidden="true"></span>
+    </button>
+    <label class="switch" aria-label="Toggle dark mode">
+      <input type="checkbox" id="themeToggle" checked>
+      <span class="switch-track"></span>
+    </label>
+    <div class="avatar-chip">
+      <div class="avatar-ring">{{ current_user.full_name[0]|upper if current_user.is_authenticated else '?' }}</div>
+      <div>
+        <div class="avatar-name">{{ current_user.full_name if current_user.is_authenticated else 'Guest' }}</div>
+        <div class="avatar-role">{{ current_user.email if current_user.is_authenticated else '' }}</div>
+      </div>
+    </div>
+    {% if current_user.is_authenticated %}
+    <form method="post" action="{{ url_for('auth.logout') }}" style="display:inline;">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button type="submit" class="icon-btn" aria-label="Log out" title="Log out">
+        {{ icon('log-out') }}
+      </button>
+    </form>
+    {% endif %}
+  </div>
+</header>

@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Light Mode Demo · TRINETRA AI</title>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;700;800&family=Rajdhani:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="/static/css/tokens.css">
+  <link rel="stylesheet" href="/static/css/base.css">
+  <link rel="stylesheet" href="/static/css/background.css">
+  <link rel="stylesheet" href="/static/css/layout.css">
+  <link rel="stylesheet" href="/static/css/components.css">
+  <link rel="stylesheet" href="/static/css/forms.css">
+  <link rel="stylesheet" href="/static/css/scan.css">
+  <link rel="stylesheet" href="/static/css/knowledge.css">
+  
+  <style>
+    body {
+      margin: 0;
+      padding: 20px;
+    }
+    
+    .demo-section {
+      margin-bottom: 40px;
+      padding: 30px;
+      border-radius: 14px;
+      background: var(--surface);
+      border: 1px solid var(--glass-border);
+    }
+    
+    .demo-title {
+      font-size: 1.3rem;
+      font-weight: 700;
+      margin-bottom: 20px;
+      color: var(--text-hi);
+    }
+    
+    .demo-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-top: 16px;
+    }
+    
+    .color-box {
+      padding: 24px;
+      border-radius: 12px;
+      border: 1px solid var(--glass-border);
+      text-align: center;
+      color: var(--text-hi);
+    }
+    
+    .theme-toggle-demo {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 1000;
+    }
+    
+    .mode-indicator {
+      text-align: center;
+      padding: 20px;
+      margin-bottom: 30px;
+      background: var(--surface);
+      border: 2px solid var(--eye-cyan);
+      border-radius: 12px;
+      color: var(--text-hi);
+      font-weight: 700;
+      font-size: 1.1rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="screen-alert-overlay" aria-hidden="true"></div>
+  <div class="bg-layer" aria-hidden="true"></div>
+  <div class="scanline" aria-hidden="true"></div>
+
+  <div class="theme-toggle-demo">
+    <label class="switch" aria-label="Toggle light mode">
+      <input type="checkbox" id="themeToggle" checked>
+      <span class="switch-track"></span>
+    </label>
+    <p style="color: var(--text-mid); font-size: 0.85rem; margin-top: 10px; white-space: nowrap;">
+      <strong>Dark</strong> / <strong>Light</strong>
+    </p>
+  </div>
+
+  <div class="mode-indicator" id="modeIndicator">
+    🌙 Dark Mode Active
+  </div>
+
+  <div class="demo-section">
+    <div class="demo-title">🎨 Light Mode Color Palette</div>
+    <p style="color: var(--text-mid);">Click the toggle in the top-right to switch between dark and light modes. All colors and styles automatically adjust for a clear, readable UI.</p>
+    
+    <div class="demo-grid">
+      <div class="color-box" style="background: var(--void); color: var(--text-hi); border: 2px solid var(--glass-border);">
+        <strong>Background</strong>
+      </div>
+      <div class="color-box" style="background: var(--surface); color: var(--text-hi); border: 2px solid var(--glass-border);">
+        <strong>Surface</strong>
+      </div>
+      <div class="color-box" style="background: var(--eye-cyan); color: var(--void); border: 2px solid var(--eye-cyan);">
+        <strong>Cyan Accent</strong>
+      </div>
+      <div class="color-box" style="background: var(--eye-violet); color: #fff; border: 2px solid var(--eye-violet);">
+        <strong>Violet Accent</strong>
+      </div>
+      <div class="color-box" style="background: var(--safe); color: var(--void); border: 2px solid var(--safe);">
+        <strong>Safe (Green)</strong>
+      </div>
+      <div class="color-box" style="background: var(--warn); color: var(--void); border: 2px solid var(--warn);">
+        <strong>Warning (Orange)</strong>
+      </div>
+    </div>
+  </div>
+
+  <div class="demo-section">
+    <div class="demo-title">📊 Component Examples</div>
+    
+    <h3 style="color: var(--text-hi); margin-top: 20px;">Buttons</h3>
+    <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 20px;">
+      <button class="btn btn-primary">Primary Button</button>
+      <button class="btn btn-ghost">Ghost Button</button>
+    </div>
+
+    <h3 style="color: var(--text-hi);">Cards & Panels</h3>
+    <div class="glass-panel" style="padding: 20px; margin-bottom: 16px;">
+      <h4 style="color: var(--text-hi); margin-top: 0;">Glass Panel Example</h4>
+      <p style="color: var(--text-mid); margin: 0;">This is a glass panel with smooth transparency and modern styling.</p>
+    </div>
+
+    <h3 style="color: var(--text-hi);">Badges & Status</h3>
+    <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 20px;">
+      <span class="badge badge-safe">Safe</span>
+      <span class="badge badge-suspicious">Suspicious</span>
+      <span class="badge badge-scam">Scam</span>
+    </div>
+
+    <h3 style="color: var(--text-hi);">Form Controls</h3>
+    <div class="form-field" style="margin-bottom: 16px;">
+      <label>Text Input</label>
+      <input class="form-control" type="text" placeholder="Type something...">
+    </div>
+
+    <h3 style="color: var(--text-hi);">Text Colors</h3>
+    <p style="color: var(--text-hi);"><strong>High contrast (text-hi):</strong> Important information</p>
+    <p style="color: var(--text-mid);"><strong>Medium contrast (text-mid):</strong> Supporting text</p>
+    <p style="color: var(--text-low);"><strong>Low contrast (text-low):</strong> Disabled or muted text</p>
+  </div>
+
+  <div class="demo-section">
+    <div class="demo-title">✨ Light Mode Features</div>
+    <ul style="color: var(--text-mid); line-height: 1.8;">
+      <li>✓ Clean, bright white backgrounds for comfortable daytime viewing</li>
+      <li>✓ High-contrast dark text for excellent readability</li>
+      <li>✓ Softened accent colors to maintain visual hierarchy</li>
+      <li>✓ Subtle borders and shadows for depth without glare</li>
+      <li>✓ Seamless transitions when toggling between modes</li>
+      <li>✓ All components automatically adapt to light mode</li>
+      <li>✓ Theme preference is saved to localStorage</li>
+    </ul>
+  </div>
+
+  <script>
+    const themeToggle = document.getElementById('themeToggle');
+    const modeIndicator = document.getElementById('modeIndicator');
+
+    if (themeToggle) {
+      try {
+        const saved = localStorage.getItem('trinetra_theme');
+        if (saved === 'light') {
+          document.documentElement.classList.add('light-mode');
+          themeToggle.checked = false;
+          modeIndicator.textContent = '☀️ Light Mode Active';
+        }
+      } catch (e) {
+        /* ignore */
+      }
+
+      themeToggle.addEventListener('change', function () {
+        document.documentElement.classList.toggle('light-mode', !themeToggle.checked);
+        try {
+          localStorage.setItem('trinetra_theme', themeToggle.checked ? 'dark' : 'light');
+        } catch (e) {
+          /* ignore */
+        }
+        
+        modeIndicator.textContent = themeToggle.checked ? '🌙 Dark Mode Active' : '☀️ Light Mode Active';
+      });
+    }
+  </script>
+</body>
+</html>

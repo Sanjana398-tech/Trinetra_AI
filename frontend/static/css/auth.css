@@ -1,0 +1,120 @@
+/* ==========================================================================
+   TRINETRA AI — Auth pages (login / signup)
+   ========================================================================== */
+
+.auth-shell {
+  position: relative;
+  z-index: 2;
+  min-height: 100vh;
+  min-height: 100dvh;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  gap: 28px;
+}
+
+.auth-brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 18px 22px;
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 26px 80px rgba(0, 0, 0, 0.2);
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 460px;
+  border-radius: 24px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(13, 24, 43, 0.92);
+  box-shadow: 0 30px 90px rgba(0, 0, 0, 0.24);
+}
+
+.auth-card .panel-body { padding: 40px 36px 34px; }
+
+@media (max-width: 520px) {
+  .auth-shell {
+    padding: max(24px, env(safe-area-inset-top)) 12px max(20px, env(safe-area-inset-bottom));
+  }
+
+  .auth-brand,
+  .auth-card {
+    max-width: 100%;
+  }
+}
+
+.auth-card h1 {
+  font-size: 1.38rem;
+  margin-bottom: 8px;
+}
+
+.auth-card .auth-sub {
+  color: var(--text-mid);
+  font-size: 0.88rem;
+  margin-bottom: 24px;
+}
+
+.auth-switch {
+  text-align: center;
+  font-size: 0.85rem;
+  color: var(--text-low);
+  margin-top: 24px;
+  padding-top: 22px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.auth-switch a {
+  color: var(--eye-cyan);
+  text-decoration: none;
+  font-weight: 700;
+}
+
+.auth-footnote {
+  font-size: 0.78rem;
+  color: var(--text-low);
+  margin: 0;
+  text-align: center;
+}
+
+.form-error-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: var(--radius-md);
+  background: rgba(255, 56, 96, 0.1);
+  border: 1px solid rgba(255, 56, 96, 0.24);
+  color: var(--danger);
+  font-size: 0.88rem;
+  margin-bottom: 20px;
+}
+
+.form-error-banner svg { width: 18px; height: 18px; flex-shrink: 0; }
+
+@media (max-width: 520px) {
+  .auth-shell {
+    justify-content: flex-start;
+    padding: 28px 16px 24px;
+    gap: 20px;
+  }
+
+  .auth-brand {
+    width: min(100%, 320px);
+    padding: 15px 16px;
+  }
+
+  .auth-card .panel-body {
+    padding: 28px 22px 24px !important;
+  }
+
+  .auth-card h1 {
+    font-size: 1.25rem;
+  }
+}

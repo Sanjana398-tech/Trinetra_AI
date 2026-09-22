@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+{% from "partials/icons.html" import icon %}
+
+{% block content %}
+
+{# ── Page header card ───────────────────────────────────────────────── #}
+<div class="scan-header-card" style="--module-color:var(--safe); --module-icon-bg:rgba(0,255,163,0.12); --module-glow:rgba(0,255,163,0.08);">
+  <div class="scan-header-icon">{{ icon('image') }}</div>
+  <div class="scan-header-text">
+    <div class="section-eyebrow" style="margin-bottom:6px;">Fake Payment Screenshot Detection</div>
+    <h2>Verify a payment screenshot</h2>
+    <p>Upload a screenshot of a payment confirmation. OCR extracts the amount, UPI ID, transaction ID, bank name, and timestamp, then checks for inconsistencies common in fabricated screenshots.</p>
+  </div>
+  <div class="scan-status-dot">OCR Ready</div>
+</div>
+
+{% if result and result.error %}
+<div class="scan-error">{{ icon('alert-circle') }} {{ result.error|translate }}</div>
+{% endif %}
+
+{# ── Upload form ────────────────────────────────────────────────────── #}
+<div class="glass-panel">
+  <div class="panel-body">
+    <div class="form-panel-label">{{ icon('upload') }} Upload Screenshot</div>
+    <form method="post" action="{{ url_for('screenshot_scan.scan_screenshot') }}" enctype="multipart/form-data" data-scan-form>
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="form-field">
+        <label>Payment Screenshot</label>
+        <div class="drop-zone">
+          <input type="file" id="screenshot_image" name="screenshot_image" accept=".png,.jpg,.jpeg,.webp" required>
+          <div class="drop-zone-icon">{{ icon('image') }}</div>
+          <div class="drop-zone-title">Drop screenshot here or click to browse</div>
+          <div class="drop-zone-sub">PNG, JPG, or WEBP — a clear, uncropped screenshot works best</div>
+          <span class="drop-zone-filename"></span>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary">{{ icon('radar') }} Extract &amp; Verify</button>
+        <button type="reset" class="btn btn-ghost">Clear</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{# ── Results ────────────────────────────────────────────────────────── #}
+{% if result and not result.error %}
+
+<div class="verdict-hero {{ result.verdict }}" style="margin-top:24px;">
+  <div class="vh-icon">
+    {{ icon('shield' if result.verdict == 'safe' else ('alert-triangle' if result.verdict == 'suspicious' else 'x-circle')) }}
+  </div>
+  <div>
+    <div class="vh-title">{{ result.verdict|verdict_label }}</div>
+    <p class="vh-sub">
+      {% if result.verdict == 'safe' %}{{ _('Extracted details are consistent with a genuine payment confirmation.') }}
+      {% elif result.verdict == 'suspicious' %}{{ _('Some details are missing or inconsistent — worth verifying independently.') }}
+      {% else %}{{ _('Multiple red flags found. Treat this screenshot as unverified.') }}
+      {% endif %}
+    </p>
+  </div>
+  <div class="verdict-ring-wrap">
+    <div class="verdict-ring" data-confidence="{{ result.confidence }}">
+      <svg viewBox="0 0 84 84">
+        <circle class="vr-track" cx="42" cy="42" r="35"/>
+        <circle class="vr-fill" cx="42" cy="42" r="35" stroke-dasharray="219.91" stroke-dashoffset="219.91"/>
+      </svg>
+      <div class="verdict-ring-center">
+        <div class="vrc-num">{{ result.confidence }}%</div>
+        <div class="vrc-lbl">Extraction</div>
+      </div>
+    </div>
+    <div class="vh-score-secondary">
+      <div class="num">{{ result.risk }}</div>
+      <div class="lbl">{{ _('Risk Score') }}</div>
+    </div>
+  </div>
+</div>
+
+{# Extracted fields grid #}
+<div class="glass-panel" style="margin-top:20px; margin-bottom:20px;">
+  <div class="panel-head">
+    <div><h2>Extracted Fields</h2><div class="panel-sub">Parsed from the OCR text</div></div>
+    <span class="type-chip">{{ icon('image') }} Screenshot</span>
+  </div>
+  <div class="panel-body">
+    <div class="fields-grid">
+      <div class="field-card">
+        <div class="fc-label">Amount</div>
+        <div class="fc-value {{ 'missing' if not result.fields.amount }}">
+          {{ ('₹' ~ result.fields.amount) if result.fields.amount else 'Not found' }}
+        </div>
+      </div>
+      <div class="field-card">
+        <div class="fc-label">UPI ID</div>
+        <div class="fc-value {{ 'missing' if not result.fields.upi_id }}">
+          {{ result.fields.upi_id or 'Not found' }}
+        </div>
+      </div>
+      <div class="field-card">
+        <div class="fc-label">Transaction ID / UTR</div>
+        <div class="fc-value {{ 'missing' if not result.fields.transaction_id }}">
+          {{ result.fields.transaction_id or 'Not found' }}
+        </div>
+      </div>
+      <div class="field-card">
+        <div class="fc-label">Bank / App</div>
+        <div class="fc-value {{ 'missing' if not result.fields.bank_name }}">
+          {{ result.fields.bank_name or 'Not found' }}
+        </div>
+      </div>
+      <div class="field-card" style="grid-column:1 / -1;">
+        <div class="fc-label">Timestamp</div>
+        <div class="fc-value {{ 'missing' if not result.fields.timestamp }}">
+          {{ result.fields.timestamp or 'Not found' }}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="detail-grid">
+  <div class="glass-panel">
+    <div class="panel-head"><div><h2>{{ _('Why this verdict?') }}</h2><div class="panel-sub">Consistency checks performed</div></div></div>
+    <div class="panel-body">
+      <ul class="reason-list">
+        {% for reason in result.reasons %}
+        <li>{{ icon('alert-circle') }}<span>{{ reason|translate }}</span></li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+  <div class="glass-panel">
+    <div class="panel-head"><div><h2>{{ _('Recommended Actions') }}</h2><div class="panel-sub">Cyber safety tips</div></div></div>
+    <div class="panel-body">
+      <ul class="tip-list">
+        {% for tip in result.tips %}
+        <li>{{ icon('shield') }}<span>{{ tip|translate }}</span></li>
+        {% endfor %}
+      </ul>
+      <a href="{{ url_for('history.view_record', record_id=result.record_id) }}" class="btn btn-ghost btn-block" style="margin-top:18px;">
+        {{ icon('file-text') }} {{ _('View Full Scan Record') }}
+      </a>
+    </div>
+  </div>
+</div>
+
+{% endif %}
+{% endblock %}

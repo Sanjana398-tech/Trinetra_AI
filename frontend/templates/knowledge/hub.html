@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% from "partials/icons.html" import icon %}
+
+{% block content %}
+<section class="knowledge-hero">
+  <div>
+    <div class="section-eyebrow">Cyber Safety Intelligence</div>
+    <h2>Understand the threat before it reaches you</h2>
+    <p>Simple cyber news briefs and practical guides for safer decisions across messages, payments, links, QR codes, and calls.</p>
+  </div>
+  <div class="knowledge-hero-signal">
+    <span class="signal-dot"></span>
+    <div><strong>THREAT BRIEFING</strong><small>Updated for everyday digital risks</small></div>
+  </div>
+</section>
+
+<section class="briefing-section" aria-labelledby="briefing-heading">
+  <div class="knowledge-section-heading">
+    <div>
+      <div class="section-eyebrow">Cyber News, Made Simple</div>
+      <h3 id="briefing-heading">What to know this week</h3>
+    </div>
+    <span class="knowledge-section-note">Read in under 2 minutes</span>
+  </div>
+  <div class="briefing-grid">
+    {% for brief in briefs %}
+    <article class="brief-card">
+      <img src="{{ brief.image }}" alt="{{ brief.label }}" loading="lazy">
+      <div class="brief-card-body">
+        <div class="brief-meta"><span>{{ brief.label }}</span><span>{{ brief.date }}</span></div>
+        <h4>{{ brief.title }}</h4>
+        <p>{{ brief.summary }}</p>
+        <div class="brief-action">{{ icon('shield') }} {{ brief.action }}</div>
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+</section>
+
+<section aria-labelledby="guides-heading">
+  <div class="knowledge-section-heading">
+    <div>
+      <div class="section-eyebrow">Practical Guides</div>
+      <h3 id="guides-heading">Build your scam-spotting instincts</h3>
+    </div>
+    <span class="knowledge-section-note">Clear steps, real-world examples</span>
+  </div>
+
+<div class="knowledge-grid">
+  {% for art in articles %}
+  <a class="knowledge-card" href="{{ url_for('knowledge.article', slug=art.slug) }}">
+    <img class="kc-image" src="{{ art.image }}" alt="{{ art.category }}" loading="lazy">
+    <div class="kc-card-body">
+    <div class="kc-icon">{{ icon(art.icon) }}</div>
+    <div class="kc-category">{{ art.category }}</div>
+    <div class="kc-title">{{ art.title }}</div>
+    <p class="kc-summary">{{ art.summary }}</p>
+    <div class="kc-foot">
+      <span>{{ art.read_time }}</span>
+      <span class="kc-arrow">{{ icon('arrow-up-right') }}</span>
+    </div>
+    </div>
+  </a>
+  {% endfor %}
+</div>
+</section>
+{% endblock %}

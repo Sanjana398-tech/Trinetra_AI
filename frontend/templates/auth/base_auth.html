@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}{{ page_title|default('Sign In') }} · TRINETRA AI{% endblock %}</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;700;800&family=Rajdhani:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/tokens.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/background.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/components.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/forms.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/auth.css') }}">
+
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 48 48%22><circle cx=%2224%22 cy=%2224%22 r=%2222%22 fill=%22%23050914%22/><path d=%22M4 24C4 24 12 12 24 12C36 12 44 24 44 24C44 24 36 36 24 36C12 36 4 24 4 24Z%22 stroke=%22%2300e5ff%22 stroke-width=%223%22 fill=%22none%22/><circle cx=%2224%22 cy=%2224%22 r=%226%22 fill=%22%2300e5ff%22/></svg>">
+</head>
+<body>
+  <canvas id="cyberMatrixCanvas" class="cyber-matrix-canvas" aria-hidden="true"></canvas>
+  <div class="bg-layer" aria-hidden="true"></div>
+  <div class="scanline" aria-hidden="true"></div>
+
+  <div class="auth-shell">
+    <div class="auth-brand">
+      <svg class="third-eye" viewBox="0 0 48 48" fill="none" aria-hidden="true" style="--eye-size:44px;">
+        <circle class="te-ring" cx="24" cy="24" r="21" stroke="var(--eye-cyan)" stroke-width="1" stroke-dasharray="4 6" opacity="0.5"/>
+        <path class="te-iris" d="M4 24C4 24 12 12 24 12C36 12 44 24 44 24C44 24 36 36 24 36C12 36 4 24 4 24Z" stroke="var(--eye-cyan)" stroke-width="2"/>
+        <circle class="te-pupil" cx="24" cy="24" r="5.5" fill="var(--eye-cyan)"/>
+      </svg>
+      <div>
+        <div class="brand-name">TRI<span>NETRA</span> AI</div>
+        <div class="brand-tagline">Third-Eye Scam Defense</div>
+      </div>
+    </div>
+
+    <div class="auth-card glass-panel">
+      <div class="panel-body" style="padding:34px 34px 30px;">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            <div class="flash-stack">
+              {% for category, message in messages %}
+                <div class="flash-msg flash-{{ category }}">
+                  {% from "partials/icons.html" import icon %}
+                  {{ icon('check-circle' if category == 'success' else ('alert-triangle' if category == 'warning' else ('x-circle' if category == 'error' else 'alert-circle'))) }}
+                  <span>{{ message }}</span>
+                </div>
+              {% endfor %}
+            </div>
+          {% endif %}
+        {% endwith %}
+        {% block auth_content %}{% endblock %}
+      </div>
+    </div>
+
+    <p class="auth-footnote">TRINETRA AI &middot; Final Year Engineering Project</p>
+  </div>
+  <script src="{{ url_for('static', filename='js/matrix_background.js') }}"></script>
+</body>
+</html>

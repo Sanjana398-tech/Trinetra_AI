@@ -1,0 +1,13 @@
+{
+    "model": "GNN + XGBoost",
+    "gnn_input_features": 15,
+    "gnn_embedding_features": 32,
+    "total_xgboost_features": 47,
+    "threshold": 0.4,
+    "roc_auc": 0.6693204619166789,
+    "pr_auc": 0.07064457123276359,
+    "training_samples": 16000,
+    "testing_samples": 4000,
+    "training_fraud": 610,
+    "testing_fraud": 153
+}

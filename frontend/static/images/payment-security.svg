@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 420" role="img" aria-labelledby="title desc">
+  <title id="title">Payment security illustration</title>
+  <desc id="desc">A secure digital payment screen with a shield and scanning lines.</desc>
+  <defs><linearGradient id="bg" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#08233a"/><stop offset="1" stop-color="#17113c"/></linearGradient></defs>
+  <rect width="900" height="420" fill="url(#bg)"/>
+  <path d="M0 330h900M0 90h900M120 0v420M780 0v420" stroke="#43d8ef" stroke-opacity=".12"/>
+  <circle cx="660" cy="180" r="126" fill="none" stroke="#5cecff" stroke-opacity=".22" stroke-width="2"/>
+  <circle cx="660" cy="180" r="88" fill="none" stroke="#a477ff" stroke-opacity=".3" stroke-dasharray="8 12" stroke-width="2"/>
+  <path d="M660 91l65 26v55c0 49-35 77-65 91-30-14-65-42-65-91v-55z" fill="#0c334b" stroke="#5cecff" stroke-width="4"/>
+  <path d="m625 175 24 24 48-55" fill="none" stroke="#6effbd" stroke-linecap="round" stroke-linejoin="round" stroke-width="12"/>
+  <rect x="110" y="105" width="270" height="190" rx="18" fill="#071426" stroke="#5cecff" stroke-opacity=".5" stroke-width="3"/>
+  <rect x="142" y="140" width="92" height="14" rx="7" fill="#5cecff" fill-opacity=".8"/><rect x="142" y="178" width="172" height="10" rx="5" fill="#aebdd4" fill-opacity=".45"/><rect x="142" y="205" width="122" height="10" rx="5" fill="#aebdd4" fill-opacity=".25"/>
+  <circle cx="332" cy="254" r="19" fill="#00ffa3" fill-opacity=".8"/><path d="m323 254 7 7 13-15" fill="none" stroke="#071426" stroke-width="4"/>
+</svg>

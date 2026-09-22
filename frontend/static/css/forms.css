@@ -1,0 +1,217 @@
+/* ==========================================================================
+   TRINETRA AI — Flash messages, forms, pagination
+   Used by the Scan History module and any future CRUD screens.
+   ========================================================================== */
+
+/* ---------------------------- Flash messages ------------------------------ */
+
+.flash-stack { display: flex; flex-direction: column; gap: 12px; margin-bottom: 18px; }
+
+.flash-msg {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 18px;
+  border-radius: var(--radius-md);
+  font-size: 0.9rem;
+  font-weight: 700;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-hi);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.14);
+}
+.flash-msg svg { width: 18px; height: 18px; flex-shrink: 0; }
+
+.flash-success { color: var(--safe); border-color: rgba(0, 255, 163, 0.26); background: rgba(0, 255, 163, 0.08); }
+.flash-error { color: var(--danger); border-color: rgba(255, 56, 96, 0.3); background: rgba(255, 56, 96, 0.08); }
+.flash-warning { color: var(--warn); border-color: rgba(255, 176, 32, 0.3); background: rgba(255, 176, 32, 0.08); }
+.flash-info { color: var(--eye-cyan); border-color: rgba(0, 229, 255, 0.18); background: rgba(0, 229, 255, 0.08); }
+
+/* ---------------------------- Forms ---------------------------------------- */
+
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+@media (max-width: 720px) { .form-grid { grid-template-columns: 1fr; } }
+
+.form-field { display: flex; flex-direction: column; gap: 9px; margin-bottom: 20px; }
+.form-field.span-2 { grid-column: 1 / -1; }
+
+.form-field label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  font-weight: 700;
+  color: var(--text-low);
+}
+.form-field .field-hint { font-size: 0.74rem; color: var(--text-low); margin-top: -3px; }
+
+.form-control {
+  width: 100%;
+  padding: 16px 18px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--text-hi);
+  font-family: var(--font-body);
+  font-size: 0.96rem;
+  font-weight: 500;
+  transition: border-color var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease);
+}
+
+.form-control:focus {
+  outline: none;
+  border-color: var(--eye-cyan);
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 0 0 4px rgba(0, 229, 255, 0.12);
+}
+
+textarea.form-control { resize: vertical; min-height: 140px; font-family: var(--font-body); }
+select.form-control { cursor: pointer; }
+
+.form-actions { display: flex; gap: 14px; margin-top: 10px; justify-content: flex-end; flex-wrap: wrap; }
+
+.field-error { color: var(--danger); font-size: 0.78rem; font-weight: 700; }
+.form-control.has-error { border-color: var(--danger); }
+
+/* ---------------------------- Pagination ------------------------------------ */
+
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 16px 22px 8px;
+}
+
+.page-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  height: 36px;
+  padding: 0 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--text-mid);
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  font-weight: 700;
+  transition: all var(--dur-fast) var(--ease);
+}
+
+.page-link:hover { border-color: rgba(0, 229, 255, 0.18); color: var(--eye-cyan); }
+.page-link.active { background: var(--eye-cyan); color: var(--void); border-color: var(--eye-cyan); }
+.page-link.disabled { opacity: 0.35; pointer-events: none; }
+
+/* ---------------------------- Detail page ------------------------------------ */
+
+.detail-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 24px; }
+@media (max-width: 980px) { .detail-grid { grid-template-columns: 1fr; } }
+
+.kv-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.kv-row:last-child { border-bottom: none; }
+.kv-row .k { color: var(--text-low); font-size: 0.82rem; }
+.kv-row .v { color: var(--text-hi); font-size: 0.92rem; font-weight: 700; text-align: right; }
+
+.action-bar { display: flex; gap: 12px; flex-wrap: wrap; }
+
+.confirm-note { font-size: 0.74rem; color: var(--text-low); margin-top: 10px; }
+
+/* ========================================================================== 
+   LIGHT MODE OVERRIDES
+   ========================================================================== */
+
+html.light-mode .flash-msg {
+  border-color: rgba(0, 0, 0, 0.08);
+  background: rgba(0, 0, 0, 0.04);
+  color: var(--text-hi);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+html.light-mode .flash-success {
+  color: var(--safe);
+  border-color: rgba(10, 155, 108, 0.2);
+  background: rgba(10, 155, 108, 0.08);
+}
+
+html.light-mode .flash-error {
+  color: var(--danger);
+  border-color: rgba(198, 44, 79, 0.2);
+  background: rgba(198, 44, 79, 0.08);
+}
+
+html.light-mode .flash-warning {
+  color: var(--warn);
+  border-color: rgba(180, 102, 0, 0.2);
+  background: rgba(180, 102, 0, 0.08);
+}
+
+html.light-mode .flash-info {
+  color: var(--eye-cyan);
+  border-color: rgba(0, 146, 168, 0.2);
+  background: rgba(0, 146, 168, 0.08);
+}
+
+html.light-mode .form-control {
+  background: rgba(0, 0, 0, 0.04);
+  border-color: rgba(0, 0, 0, 0.12);
+  color: var(--text-hi);
+}
+
+html.light-mode .form-control:focus {
+  border-color: var(--eye-cyan);
+  background: rgba(0, 146, 168, 0.05);
+  box-shadow: 0 0 0 4px rgba(0, 146, 168, 0.1);
+}
+
+html.light-mode .form-control::placeholder {
+  color: var(--text-low);
+}
+
+html.light-mode .field-error {
+  color: var(--danger);
+}
+
+html.light-mode .form-control.has-error {
+  border-color: var(--danger);
+}
+
+html.light-mode .page-link {
+  border-color: rgba(0, 0, 0, 0.1);
+  color: var(--text-mid);
+  background: transparent;
+}
+
+html.light-mode .page-link:hover {
+  border-color: rgba(0, 146, 168, 0.2);
+  color: var(--eye-cyan);
+  background: rgba(0, 146, 168, 0.08);
+}
+
+html.light-mode .page-link.active {
+  background: var(--eye-cyan);
+  color: #ffffff;
+  border-color: var(--eye-cyan);
+}
+
+html.light-mode .kv-row {
+  border-bottom-color: rgba(0, 0, 0, 0.08);
+}
+
+html.light-mode .kv-row .k {
+  color: var(--text-low);
+}
+
+html.light-mode .kv-row .v {
+  color: var(--text-hi);
+}
+
+html.light-mode .confirm-note {
+  color: var(--text-low);
+}

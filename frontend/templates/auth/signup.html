@@ -1,0 +1,48 @@
+{% extends "auth/base_auth.html" %}
+{% from "partials/icons.html" import icon %}
+
+{% block title %}Sign Up · TRINETRA AI{% endblock %}
+
+{% block auth_content %}
+<h1>Create your account</h1>
+<p class="auth-sub">Start scanning messages, links, and more for scams.</p>
+
+<form method="post" action="{{ url_for('auth.signup') }}">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+  <div class="form-field">
+    <label for="full_name">Full Name</label>
+    <input class="form-control {{ 'has-error' if errors.full_name }}" type="text" id="full_name" name="full_name"
+           required autofocus value="{{ form_data.full_name }}" placeholder="Your name">
+    {% if errors.full_name %}<div class="field-error">{{ errors.full_name }}</div>{% endif %}
+  </div>
+
+  <div class="form-field">
+    <label for="email">Email</label>
+    <input class="form-control {{ 'has-error' if errors.email }}" type="email" id="email" name="email"
+           required value="{{ form_data.email }}" placeholder="you@example.com">
+    {% if errors.email %}<div class="field-error">{{ errors.email }}</div>{% endif %}
+  </div>
+
+  <div class="form-field">
+    <label for="password">Password</label>
+    <input class="form-control {{ 'has-error' if errors.password }}" type="password" id="password" name="password" required>
+    <div class="field-hint">At least 8 characters.</div>
+    {% if errors.password %}<div class="field-error">{{ errors.password }}</div>{% endif %}
+  </div>
+
+  <div class="form-field">
+    <label for="confirm_password">Confirm Password</label>
+    <input class="form-control {{ 'has-error' if errors.confirm_password }}" type="password" id="confirm_password" name="confirm_password" required>
+    {% if errors.confirm_password %}<div class="field-error">{{ errors.confirm_password }}</div>{% endif %}
+  </div>
+
+  <button type="submit" class="btn btn-primary btn-block" style="margin-top:6px;">
+    {{ icon('shield') }} Create Account
+  </button>
+</form>
+
+<div class="auth-switch">
+  Already have an account? <a href="{{ url_for('auth.login') }}">Log in</a>
+</div>
+{% endblock %}

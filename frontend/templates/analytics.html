@@ -1,0 +1,239 @@
+{% extends "base.html" %}
+{% from "partials/icons.html" import icon %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/analytics.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="section-eyebrow">SOC Intelligence</div>
+<div class="analytics-hero">
+  <div>
+    <h2>Advanced Analytics</h2>
+    <p>Date, detection type, and verdict analysis across your scan history.</p>
+  </div>
+  <button type="button" class="btn btn-primary" id="exportReportBtn">
+    {{ icon('download') }} Export Report
+  </button>
+</div>
+
+<div class="glass-panel analytics-filters">
+  <div class="panel-body">
+    <div class="analytics-filter-row">
+      <div class="analytics-filter-group">
+        <span class="analytics-filter-label">Date Range</span>
+        <div class="filter-pills" id="rangePills">
+          <button type="button" class="filter-pill" data-range="today">Today</button>
+          <button type="button" class="filter-pill" data-range="7d">Last 7 Days</button>
+          <button type="button" class="filter-pill active" data-range="30d">Last 30 Days</button>
+          <button type="button" class="filter-pill" data-range="90d">Last 90 Days</button>
+          <button type="button" class="filter-pill" data-range="all">All Time</button>
+          <button type="button" class="filter-pill" data-range="custom">Custom</button>
+        </div>
+      </div>
+      <div class="analytics-filter-group">
+        <label class="analytics-filter-label" for="typeFilter">Detection Type</label>
+        <select class="form-control analytics-select" id="typeFilter">
+          <option value="all">All</option>
+        </select>
+      </div>
+      <div class="analytics-filter-group">
+        <label class="analytics-filter-label" for="verdictFilter">Verdict</label>
+        <select class="form-control analytics-select" id="verdictFilter">
+          <option value="all">All</option>
+          <option value="safe">Safe</option>
+          <option value="suspicious">Suspicious</option>
+          <option value="scam">Scam</option>
+        </select>
+      </div>
+    </div>
+    <div class="analytics-custom-range is-hidden" id="customRangeRow">
+      <div class="form-field">
+        <label for="startDate">Start Date</label>
+        <input class="form-control" type="date" id="startDate">
+      </div>
+      <div class="form-field">
+        <label for="endDate">End Date</label>
+        <input class="form-control" type="date" id="endDate">
+      </div>
+      <div class="analytics-custom-actions">
+        <button type="button" class="btn btn-primary btn-sm" id="applyCustomBtn">Apply</button>
+        <button type="button" class="btn btn-ghost btn-sm" id="resetFiltersBtn">Reset</button>
+      </div>
+    </div>
+    <p class="analytics-range-error is-hidden" id="rangeError">Select both a start date and an end date.</p>
+  </div>
+</div>
+
+<div class="stat-grid analytics-stat-grid" id="summaryCards">
+  <div class="glass-panel stat-card" style="--glow: rgba(0,229,255,0.18);">
+    <div class="stat-top">
+      <div class="stat-icon" style="--tint: var(--eye-cyan); --tint-bg: rgba(0,229,255,0.12);">{{ icon('activity') }}</div>
+    </div>
+    <div class="stat-value" data-stat="total">0</div>
+    <div class="stat-label">Total Scans</div>
+  </div>
+  <div class="glass-panel stat-card" style="--glow: rgba(0,255,163,0.18);">
+    <div class="stat-top">
+      <div class="stat-icon" style="--tint: var(--safe); --tint-bg: rgba(0,255,163,0.12);">{{ icon('shield') }}</div>
+    </div>
+    <div class="stat-value" data-stat="safe">0</div>
+    <div class="stat-label">Safe</div>
+  </div>
+  <div class="glass-panel stat-card" style="--glow: rgba(255,176,32,0.18);">
+    <div class="stat-top">
+      <div class="stat-icon" style="--tint: var(--warn); --tint-bg: rgba(255,176,32,0.12);">{{ icon('alert-circle') }}</div>
+    </div>
+    <div class="stat-value" data-stat="suspicious">0</div>
+    <div class="stat-label">Suspicious</div>
+  </div>
+  <div class="glass-panel stat-card" style="--glow: rgba(255,56,96,0.18);">
+    <div class="stat-top">
+      <div class="stat-icon" style="--tint: var(--danger); --tint-bg: rgba(255,56,96,0.12);">{{ icon('alert-triangle') }}</div>
+    </div>
+    <div class="stat-value" data-stat="scam">0</div>
+    <div class="stat-label">Scam</div>
+  </div>
+  <div class="glass-panel stat-card" style="--glow: rgba(123,97,255,0.18);">
+    <div class="stat-top">
+      <div class="stat-icon" style="--tint: var(--eye-violet); --tint-bg: rgba(123,97,255,0.14);">{{ icon('radar') }}</div>
+    </div>
+    <div class="stat-value" data-stat="detectionRate">0%</div>
+    <div class="stat-label">Detection Rate</div>
+  </div>
+  <div class="glass-panel stat-card" style="--glow: rgba(0,229,255,0.14);">
+    <div class="stat-top">
+      <div class="stat-icon" style="--tint: var(--eye-cyan); --tint-bg: rgba(0,229,255,0.12);">{{ icon('zap') }}</div>
+    </div>
+    <div class="stat-value analytics-stat-text" data-stat="topThreat">—</div>
+    <div class="stat-label">Most Common Threat Type</div>
+  </div>
+</div>
+
+<div class="analytics-empty-banner is-hidden" id="emptyBanner">
+  {{ icon('radar') }}
+  <div>
+    <h3>No scan data available for the selected filters.</h3>
+    <p>Adjust the date range, detection type, or verdict and try again.</p>
+  </div>
+</div>
+
+<div class="dash-grid">
+  <div class="glass-panel">
+    <div class="panel-head">
+      <div>
+        <h2>Scans Over Time</h2>
+        <div class="panel-sub">Safe, suspicious, and scam counts by date</div>
+      </div>
+    </div>
+    <div class="panel-body">
+      <div class="chart-box analytics-chart">
+        <canvas id="scansOverTimeChart"></canvas>
+      </div>
+    </div>
+  </div>
+  <div class="glass-panel">
+    <div class="panel-head">
+      <div>
+        <h2>Verdict Distribution</h2>
+        <div class="panel-sub">Safe · Suspicious · Scam</div>
+      </div>
+    </div>
+    <div class="panel-body">
+      <div class="chart-box analytics-chart">
+        <canvas id="verdictChart"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="dash-grid-secondary">
+  <div class="glass-panel">
+    <div class="panel-head">
+      <div>
+        <h2>Scans by Detection Type</h2>
+        <div class="panel-sub">Modules used in the selected period</div>
+      </div>
+    </div>
+    <div class="panel-body">
+      <div class="chart-box analytics-chart">
+        <canvas id="typeChart"></canvas>
+      </div>
+    </div>
+  </div>
+  <div class="glass-panel">
+    <div class="panel-head">
+      <div>
+        <h2>Scam Distribution by Type</h2>
+        <div class="panel-sub">Which modules produce the most scam verdicts</div>
+      </div>
+    </div>
+    <div class="panel-body">
+      <div class="chart-box analytics-chart">
+        <canvas id="scamTypeChart"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="glass-panel analytics-panel">
+  <div class="panel-head">
+    <div>
+      <h2>Threat Trend Analysis</h2>
+      <div class="panel-sub">Suspicious + scam detections over time</div>
+    </div>
+  </div>
+  <div class="panel-body">
+    <div class="chart-box analytics-chart-wide">
+      <canvas id="threatTrendChart"></canvas>
+    </div>
+  </div>
+</div>
+
+<div class="glass-panel analytics-panel">
+  <div class="panel-head">
+    <div>
+      <h2>Detection Type × Date</h2>
+      <div class="panel-sub">How each module was used day by day</div>
+    </div>
+  </div>
+  <div class="panel-body">
+    <div class="chart-box analytics-chart-wide">
+      <canvas id="typeDateChart"></canvas>
+    </div>
+    <div class="table-scroll analytics-matrix-wrap" id="typeDateTable"></div>
+  </div>
+</div>
+
+<div class="glass-panel analytics-panel">
+  <div class="panel-head">
+    <div>
+      <h2>Recent Threat Activity</h2>
+      <div class="panel-sub">Latest suspicious and scam detections</div>
+    </div>
+  </div>
+  <div class="panel-body table-scroll" id="recentThreatsBody"></div>
+</div>
+
+<div class="glass-panel analytics-panel">
+  <div class="panel-head">
+    <div>
+      <h2>Analytics Table</h2>
+      <div class="panel-sub">Totals and scam rate by detection type</div>
+    </div>
+  </div>
+  <div class="panel-body table-scroll" id="summaryTableBody"></div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/chart.umd.min.js') }}"></script>
+<script>
+  window.__TRINETRA_ANALYTICS__ = {{ {
+    'overviewUrl': overview_url,
+    'exportUrl': export_url,
+  } | tojson }};
+</script>
+<script src="{{ url_for('static', filename='js/analytics.js') }}"></script>
+{% endblock %}

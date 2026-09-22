@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+{% from "partials/icons.html" import icon %}
+
+{% block content %}
+<div class="section-eyebrow">Full Activity Log</div>
+<div style="display:flex; align-items:flex-end; justify-content:space-between; flex-wrap:wrap; gap:14px; margin-bottom:22px;">
+  <div>
+    <h2 style="margin-bottom:4px;">Scan History</h2>
+    <p style="margin:0;">{{ total_count }} scan{{ 's' if total_count != 1 }} recorded across every channel.</p>
+  </div>
+  <a href="{{ url_for('history.new_record') }}" class="btn btn-primary">{{ icon('plus') }} Log a Scan</a>
+</div>
+
+<div class="glass-panel">
+  <div class="panel-body" style="padding-bottom:0;">
+    <form method="get" action="{{ url_for('history.list_history') }}" class="form-grid" style="align-items:end;">
+      <div class="form-field">
+        <label for="q">Search</label>
+        <input class="form-control" type="text" id="q" name="q" placeholder="Search input text..." value="{{ q }}">
+      </div>
+      <div class="form-field">
+        <label for="type">Channel</label>
+        <select class="form-control" id="type" name="type">
+          <option value="all" {{ 'selected' if scan_type == 'all' }}>All Channels</option>
+          <option value="message" {{ 'selected' if scan_type == 'message' }}>Message</option>
+          <option value="url" {{ 'selected' if scan_type == 'url' }}>URL</option>
+          <option value="qr" {{ 'selected' if scan_type == 'qr' }}>QR Code</option>
+          <option value="voice" {{ 'selected' if scan_type == 'voice' }}>Voice</option>
+          <option value="screenshot" {{ 'selected' if scan_type == 'screenshot' }}>Screenshot</option>
+          <option value="upi" {{ 'selected' if scan_type == 'upi' }}>UPI Scan</option>
+        </select>
+      </div>
+      <div class="form-field">
+        <label for="verdict">Verdict</label>
+        <select class="form-control" id="verdict" name="verdict">
+          <option value="all" {{ 'selected' if verdict == 'all' }}>All Verdicts</option>
+          <option value="safe" {{ 'selected' if verdict == 'safe' }}>Safe</option>
+          <option value="suspicious" {{ 'selected' if verdict == 'suspicious' }}>Suspicious</option>
+          <option value="scam" {{ 'selected' if verdict == 'scam' }}>Scam</option>
+        </select>
+      </div>
+      <div class="form-field">
+        <button type="submit" class="btn btn-ghost btn-block">{{ icon('search') }} Apply Filters</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="panel-body table-scroll">
+    {% if records %}
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Channel</th>
+          <th>Input</th>
+          <th>Verdict</th>
+          <th>Confidence</th>
+          <th>Risk</th>
+          <th>Scanned</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% set icon_for_type = {'message':'message-square','url':'link','qr':'qr-code','voice':'mic','screenshot':'image','upi':'zap'} %}
+        {% for scan in records %}
+        <tr>
+          <td><span class="type-chip">{{ icon(icon_for_type.get(scan.scan_type, 'activity')) }}{{ scan.scan_type|capitalize }}</span></td>
+          <td class="cell-primary" style="max-width:300px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+            <a href="{{ url_for('history.view_record', record_id=scan.id) }}" style="color:inherit;">{{ scan.input_summary }}</a>
+          </td>
+          <td><span class="badge badge-{{ scan.verdict }}">{{ scan.verdict|verdict_label }}</span></td>
+          <td class="cell-mono">{{ scan.confidence_score }}%</td>
+          <td class="cell-mono">{{ scan.risk_score }}</td>
+          <td class="cell-mono">{{ scan.created_at.strftime('%d %b, %I:%M %p') }}</td>
+          <td>
+            <div style="display:flex; gap:6px;">
+              <a href="{{ url_for('history.view_record', record_id=scan.id) }}" class="icon-btn" aria-label="View" title="View">{{ icon('arrow-up-right') }}</a>
+              <a href="{{ url_for('history.edit_record', record_id=scan.id) }}" class="icon-btn" aria-label="Edit" title="Edit">{{ icon('wrench') }}</a>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    {% if pagination.pages > 1 %}
+    <nav class="pagination" aria-label="Pagination">
+      <a class="page-link {{ 'disabled' if not pagination.has_prev }}"
+         href="{{ url_for('history.list_history', q=q, type=scan_type, verdict=verdict, page=pagination.prev_num) if pagination.has_prev else '#' }}">
+        {{ icon('chevron-left') }}
+      </a>
+      {% for p in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+        {% if p %}
+          <a class="page-link {{ 'active' if p == pagination.page }}"
+             href="{{ url_for('history.list_history', q=q, type=scan_type, verdict=verdict, page=p) }}">{{ p }}</a>
+        {% else %}
+          <span class="page-link disabled">&hellip;</span>
+        {% endif %}
+      {% endfor %}
+      <a class="page-link {{ 'disabled' if not pagination.has_next }}"
+         href="{{ url_for('history.list_history', q=q, type=scan_type, verdict=verdict, page=pagination.next_num) if pagination.has_next else '#' }}">
+        {{ icon('chevron-right') }}
+      </a>
+    </nav>
+    {% endif %}
+
+    {% else %}
+    <div class="empty-state">
+      {{ icon('radar') }}
+      <h3>No matching scans</h3>
+      <p>Try clearing your filters, or log a new scan to get started.</p>
+      <a href="{{ url_for('history.new_record') }}" class="btn btn-primary" style="margin-top:14px;">{{ icon('plus') }} Log a Scan</a>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

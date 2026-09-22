@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% from "partials/icons.html" import icon %}
+
+{% block content %}
+<div class="section-eyebrow">{{ 'New Record' if mode == 'create' else 'Edit Record' }}</div>
+<h2 style="margin-bottom:6px;">{{ 'Log a Scan' if mode == 'create' else 'Edit Scan #' ~ record.id }}</h2>
+<p style="max-width:560px;">
+  {% if mode == 'create' %}
+    Detection modules will insert records here automatically starting Phase 3.
+    Until then, use this form to log a scan manually — useful for testing the
+    history, filtering, and reporting UI with real data.
+  {% else %}
+    Update the verdict, scores, or explanation for this record.
+  {% endif %}
+</p>
+
+<div class="glass-panel" style="max-width:760px;">
+  <div class="panel-body">
+    <form method="post" action="{{ url_for('history.new_record') if mode == 'create' else url_for('history.edit_record', record_id=record.id) }}" novalidate>
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="form-grid">
+        <div class="form-field">
+          <label for="scan_type">Channel</label>
+          <select class="form-control {{ 'has-error' if errors.scan_type }}" id="scan_type" name="scan_type">
+            <option value="">Select a channel&hellip;</option>
+            <option value="message" {{ 'selected' if record.scan_type == 'message' }}>Message (SMS / Email / WhatsApp)</option>
+            <option value="url" {{ 'selected' if record.scan_type == 'url' }}>URL</option>
+            <option value="qr" {{ 'selected' if record.scan_type == 'qr' }}>QR Code</option>
+            <option value="voice" {{ 'selected' if record.scan_type == 'voice' }}>Voice</option>
+            <option value="screenshot" {{ 'selected' if record.scan_type == 'screenshot' }}>Payment Screenshot</option>
+            <option value="upi" {{ 'selected' if record.scan_type == 'upi' }}>UPI Scan</option>
+          </select>
+          {% if errors.scan_type %}<div class="field-error">{{ errors.scan_type }}</div>{% endif %}
+        </div>
+
+        <div class="form-field">
+          <label for="verdict">Verdict</label>
+          <select class="form-control {{ 'has-error' if errors.verdict }}" id="verdict" name="verdict">
+            <option value="">Select a verdict&hellip;</option>
+            <option value="safe" {{ 'selected' if record.verdict == 'safe' }}>Safe</option>
+            <option value="suspicious" {{ 'selected' if record.verdict == 'suspicious' }}>Suspicious</option>
+            <option value="scam" {{ 'selected' if record.verdict == 'scam' }}>Scam</option>
+          </select>
+          {% if errors.verdict %}<div class="field-error">{{ errors.verdict }}</div>{% endif %}
+        </div>
+
+        <div class="form-field span-2">
+          <label for="input_summary">Input Content</label>
+          <textarea class="form-control {{ 'has-error' if errors.input_summary }}" id="input_summary" name="input_summary"
+                    placeholder="Paste the message, URL, or a short description of the scan input...">{{ record.input_summary or '' }}</textarea>
+          {% if errors.input_summary %}<div class="field-error">{{ errors.input_summary }}</div>{% endif %}
+        </div>
+
+        <div class="form-field">
+          <label for="confidence_score">Confidence Score (%)</label>
+          <input class="form-control {{ 'has-error' if errors.confidence_score }}" type="number" min="0" max="100" step="0.1"
+                 id="confidence_score" name="confidence_score" value="{{ record.confidence_score if record.confidence_score is not none else '' }}">
+          <div class="field-hint">How confident the classification is, 0–100.</div>
+          {% if errors.confidence_score %}<div class="field-error">{{ errors.confidence_score }}</div>{% endif %}
+        </div>
+
+        <div class="form-field">
+          <label for="risk_score">Risk Score</label>
+          <input class="form-control {{ 'has-error' if errors.risk_score }}" type="number" min="0" max="100" step="0.1"
+                 id="risk_score" name="risk_score" value="{{ record.risk_score if record.risk_score is not none else '' }}">
+          <div class="field-hint">Overall threat severity, 0–100.</div>
+          {% if errors.risk_score %}<div class="field-error">{{ errors.risk_score }}</div>{% endif %}
+        </div>
+
+        <div class="form-field span-2">
+          <label for="explanation">Explanation / Notes</label>
+          <textarea class="form-control {{ 'has-error' if errors.explanation }}" id="explanation" name="explanation"
+                    placeholder="Why is this risky? What should the user do?">{{ record.explanation or '' }}</textarea>
+          {% if errors.explanation %}<div class="field-error">{{ errors.explanation }}</div>{% endif %}
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary">
+          {{ icon('check-circle') }} {{ 'Create Record' if mode == 'create' else 'Save Changes' }}
+        </button>
+        <a href="{{ url_for('history.list_history') }}" class="btn btn-ghost">Cancel</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

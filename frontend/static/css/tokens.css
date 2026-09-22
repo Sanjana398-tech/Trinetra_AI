@@ -1,0 +1,109 @@
+/* ==========================================================================
+   TRINETRA AI — Design Tokens
+   Theme: "Third Eye" — a dark, watchful, radar-scanned surveillance grid.
+   ========================================================================== */
+
+:root {
+  /* ---- Core surfaces ---- */
+  --void: #050914;              /* page background: deep space-navy */
+  --bg-1: #070d1c;
+  --bg-2: #0b1526;
+  --surface: #0d1a2f;
+  --surface-raised: #10203a;
+
+  /* ---- Glass ---- */
+  --glass-bg: rgba(13, 24, 43, 0.55);
+  --glass-bg-strong: rgba(13, 24, 43, 0.78);
+  --glass-border: rgba(0, 229, 255, 0.14);
+  --glass-border-strong: rgba(0, 229, 255, 0.28);
+
+  /* ---- The Eye: neon accents ---- */
+  --eye-cyan: #00e5ff;
+  --eye-cyan-dim: #00b8cc;
+  --eye-violet: #7b61ff;
+  --eye-violet-dim: #5b46c9;
+
+  /* ---- Verdict colors ---- */
+  --safe: #00ffa3;
+  --safe-bg: rgba(0, 255, 163, 0.1);
+  --warn: #ffb020;
+  --warn-bg: rgba(255, 176, 32, 0.1);
+  --danger: #ff3860;
+  --danger-bg: rgba(255, 56, 96, 0.1);
+
+  /* ---- Text ---- */
+  --text-hi: #eaf4ff;
+  --text-mid: #aebdd4;
+  --text-low: #6f81a0;
+
+  /* ---- Type ---- */
+  --font-display: "Orbitron", "Segoe UI", sans-serif;
+  --font-body: "Rajdhani", "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", "Consolas", monospace;
+
+  /* ---- Layout ---- */
+  --sidebar-w: 264px;
+  --sidebar-w-collapsed: 84px;
+  --topbar-h: 72px;
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 22px;
+
+  /* ---- Motion ---- */
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --dur-fast: 150ms;
+  --dur-med: 320ms;
+  --dur-slow: 900ms;
+
+  /* ---- Elevation ---- */
+  --shadow-glow-cyan: 0 0 24px rgba(0, 229, 255, 0.18);
+  --shadow-glow-violet: 0 0 24px rgba(123, 97, 255, 0.16);
+  --shadow-card: 0 10px 30px rgba(0, 0, 0, 0.35);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ==========================================================================
+   Light mode — same structure, flipped surfaces. Accent/verdict colors stay
+   close to their dark-mode values (deepened slightly) so status meaning
+   doesn't shift between themes; only surfaces and text invert.
+   ========================================================================== */
+html.light-mode {
+  --void: #f4f7fb;
+  --bg-1: #eef2f7;
+  --bg-2: #e7edf4;
+  --surface: #ffffff;
+  --surface-raised: #f2f5f9;
+
+  --glass-bg: rgba(255, 255, 255, 0.72);
+  --glass-bg-strong: rgba(255, 255, 255, 0.9);
+  --glass-border: rgba(15, 40, 70, 0.10);
+  --glass-border-strong: rgba(0, 150, 170, 0.28);
+
+  --eye-cyan: #0092a8;
+  --eye-cyan-dim: #007689;
+  --eye-violet: #6248d6;
+  --eye-violet-dim: #4d38ad;
+
+  --safe: #0a9b6c;
+  --safe-bg: rgba(10, 155, 108, 0.10);
+  --warn: #b46600;
+  --warn-bg: rgba(180, 102, 0, 0.10);
+  --danger: #c62c4f;
+  --danger-bg: rgba(198, 44, 79, 0.09);
+
+  --text-hi: #101826;
+  --text-mid: #445168;
+  --text-low: #8391a6;
+
+  --shadow-glow-cyan: 0 0 20px rgba(0, 146, 168, 0.14);
+  --shadow-glow-violet: 0 0 20px rgba(98, 72, 214, 0.12);
+  --shadow-card: 0 8px 24px rgba(30, 45, 70, 0.08);
+}

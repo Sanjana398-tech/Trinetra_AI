@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% from "partials/icons.html" import icon %}
+
+{% block content %}
+{% set icon_for_type = {'message':'message-square','url':'link','qr':'qr-code','voice':'mic','screenshot':'image','upi':'zap'} %}
+<div class="section-eyebrow">Scan Record #{{ record.id }}</div>
+<div style="display:flex; align-items:flex-end; justify-content:space-between; flex-wrap:wrap; gap:14px; margin-bottom:22px;">
+  <div>
+    <h2 style="margin-bottom:4px;">{{ record.scan_type|capitalize }} Scan Detail</h2>
+    <p style="margin:0;">Logged {{ record.created_at.strftime('%d %b %Y, %I:%M %p') }}</p>
+  </div>
+  <div class="action-bar">
+    <a href="{{ url_for('reports.download_report', record_id=record.id) }}" class="btn btn-primary">{{ icon('download') }} Download PDF Report</a>
+    <a href="{{ url_for('history.edit_record', record_id=record.id) }}" class="btn btn-ghost">{{ icon('wrench') }} Edit</a>
+    <form method="post" action="{{ url_for('history.delete_record', record_id=record.id) }}"
+          onsubmit="return confirm('Delete this scan record permanently? This cannot be undone.');" style="display:inline;">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button type="submit" class="btn btn-ghost" style="color:var(--danger); border-color:rgba(255,56,96,0.3);">
+        {{ icon('x-circle') }} Delete
+      </button>
+    </form>
+  </div>
+</div>
+
+<div class="detail-grid">
+  <div class="glass-panel">
+    <div class="panel-head">
+      <div>
+        <h2>Input Content</h2>
+        <div class="panel-sub">What was submitted for this scan</div>
+      </div>
+      <span class="badge badge-{{ record.verdict }}">{{ record.verdict|verdict_label }}</span>
+    </div>
+    <div class="panel-body">
+      <p style="color:var(--text-hi); white-space:pre-wrap; line-height:1.6;">{{ record.input_summary }}</p>
+
+      <h3 style="margin-top:22px;">Explanation</h3>
+      {% if record.explanation %}
+        <p style="white-space:pre-wrap;">{{ record.explanation|translate }}</p>
+      {% else %}
+        <p style="color:var(--text-low);">No explanation recorded for this scan.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="glass-panel">
+    <div class="panel-head">
+      <div>
+        <h2>Metrics</h2>
+        <div class="panel-sub">Scores &amp; classification</div>
+      </div>
+    </div>
+    <div class="panel-body">
+      <div style="margin-bottom:16px;">
+        <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
+          <span style="font-size:0.78rem; color:var(--text-low);">{{ _('Confidence') }}</span>
+          <span class="cell-mono" style="color:var(--text-hi);">{{ record.confidence_score }}%</span>
+        </div>
+        <div class="progress-track"><div class="progress-fill {{ record.verdict }}" style="width:{{ record.confidence_score }}%;"></div></div>
+      </div>
+      <div style="margin-bottom:6px;">
+        <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
+          <span style="font-size:0.78rem; color:var(--text-low);">{{ _('Risk Score') }}</span>
+          <span class="cell-mono" style="color:var(--text-hi);">{{ record.risk_score }}</span>
+        </div>
+        <div class="progress-track"><div class="progress-fill {{ record.verdict }}" style="width:{{ record.risk_score }}%;"></div></div>
+      </div>
+
+      <div style="margin-top:18px;">
+        <div class="kv-row"><span class="k">Channel</span><span class="v"><span class="type-chip">{{ icon(icon_for_type.get(record.scan_type, 'activity')) }}{{ record.scan_type|capitalize }}</span></span></div>
+        <div class="kv-row"><span class="k">Record ID</span><span class="v cell-mono">#{{ record.id }}</span></div>
+        <div class="kv-row"><span class="k">Scanned At</span><span class="v cell-mono">{{ record.created_at.strftime('%d %b %Y, %I:%M %p') }}</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div style="margin-top:20px;">
+  <a href="{{ url_for('history.list_history') }}" class="btn btn-ghost">{{ icon('chevron-left') }} Back to Scan History</a>
+</div>
+{% endblock %}

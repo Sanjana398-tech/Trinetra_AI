@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="{{ language|default('en') }}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}{{ page_title|default('Dashboard') }} · TRINETRA AI{% endblock %}</title>
+  <meta name="description" content="TRINETRA AI — Smart Third-Eye Cyber Scam Detection System">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;700;800&family=Rajdhani:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/tokens.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/background.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/layout.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/components.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/forms.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/scan.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/knowledge.css') }}">
+  {% block extra_css %}{% endblock %}
+
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 48 48%22><circle cx=%2224%22 cy=%2224%22 r=%2222%22 fill=%22%23050914%22/><path d=%22M4 24C4 24 12 12 24 12C36 12 44 24 44 24C44 24 36 36 24 36C12 36 4 24 4 24Z%22 stroke=%22%2300e5ff%22 stroke-width=%223%22 fill=%22none%22/><circle cx=%2224%22 cy=%2224%22 r=%226%22 fill=%22%2300e5ff%22/></svg>">
+{% set body_class = "" %}
+{% if result and not result.error and result.verdict %}
+  {% set body_class = "has-verdict verdict-" ~ result.verdict|lower %}
+{% elif record and record.verdict %}
+  {% set body_class = "has-verdict verdict-" ~ record.verdict|lower %}
+{% endif %}
+<body class="{{ body_class }}">
+  <canvas id="cyberMatrixCanvas" class="cyber-matrix-canvas" aria-hidden="true"></canvas>
+  <div class="screen-alert-overlay" aria-hidden="true"></div>
+  <div class="bg-layer" aria-hidden="true"></div>
+  <div class="scanline" aria-hidden="true"></div>
+
+  <div class="app-shell">
+    {% include "partials/sidebar.html" %}
+
+    <div class="main">
+      {% include "partials/topbar.html" %}
+      <div class="page-content">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            <div class="flash-stack">
+              {% for category, message in messages %}
+                <div class="flash-msg flash-{{ category }}">
+                  {% from "partials/icons.html" import icon %}
+                  {{ icon('check-circle' if category == 'success' else ('alert-triangle' if category == 'warning' else ('x-circle' if category == 'error' else 'alert-circle'))) }}
+                  <span>{{ message|translate }}</span>
+                </div>
+              {% endfor %}
+            </div>
+          {% endif %}
+        {% endwith %}
+        {% block content %}{% endblock %}
+      </div>
+      <footer class="app-footer">
+        <span>TRINETRA AI &copy; {{ 2026 }} · Final Year Engineering Project</span>
+        <span>Smart Third-Eye Cyber Scam Detection System</span>
+      </footer>
+    </div>
+  </div>
+
+  <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/matrix_background.js') }}"></script>
+  {% block extra_js %}{% endblock %}
+</body>
+</html>

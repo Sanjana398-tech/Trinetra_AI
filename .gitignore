@@ -1,0 +1,55 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# Environment
+.env
+
+# Database
+database/*.db
+database/*.sqlite3
+
+# Uploads (keep folder, ignore contents)
+uploads/*
+!uploads/.gitkeep
+
+# ML models (large binaries — trained locally / via training/ scripts)
+models/*.pkl
+models/*.joblib
+
+# Datasets (may be large / private)
+datasets/*.csv
+datasets/*.json
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Logs
+*.log
+
+# Large ML model files
+models/**/*.safetensors
+models/**/*.pth
+models/**/*.bin
+
+# Ignore all dataset files at any depth
+datasets/**/*.csv
+datasets/**/*.json
+
+# Ignore all model binary files at any depth
+models/**/*.pkl
+models/**/*.joblib
+models/**/*.safetensors
+models/**/*.pth
+models/**/*.bin
+
+# Ignore voice recordings/tests
+voice_tests/*
+!voice_tests/.gitkeep

@@ -1,0 +1,62 @@
+{% from "partials/icons.html" import icon %}
+<aside class="sidebar" id="sidebar">
+  <div class="brand">
+    <svg class="third-eye" viewBox="0 0 48 48" fill="none" aria-hidden="true">
+      <circle class="te-ring" cx="24" cy="24" r="21" stroke="var(--eye-cyan)" stroke-width="1" stroke-dasharray="4 6" opacity="0.5"/>
+      <path class="te-iris" d="M4 24C4 24 12 12 24 12C36 12 44 24 44 24C44 24 36 36 24 36C12 36 4 24 4 24Z" stroke="var(--eye-cyan)" stroke-width="2"/>
+      <circle class="te-pupil" cx="24" cy="24" r="5.5" fill="var(--eye-cyan)"/>
+    </svg>
+    <div class="brand-text">
+      <div class="brand-name">TRI<span>NETRA</span> AI</div>
+      <div class="brand-tagline">Third-Eye Scam Defense</div>
+    </div>
+  </div>
+
+  <nav class="nav-scroll" aria-label="Primary navigation">
+    <div class="nav-section-label">Overview</div>
+    <a href="{{ url_for('dashboard.dashboard') }}" class="nav-link {{ 'active' if active_page == 'dashboard' }}">
+      {{ icon('layout-dashboard') }}<span class="nav-label">Dashboard</span>
+    </a>
+    <a href="{{ url_for('history.list_history') }}" class="nav-link {{ 'active' if active_page == 'history' }}">
+      {{ icon('history') }}<span class="nav-label">Scan History</span>
+    </a>
+    <a href="{{ url_for('analytics.analytics_page') }}" class="nav-link {{ 'active' if active_page == 'analytics' }}">
+      {{ icon('bar-chart') }}<span class="nav-label">Advanced Analytics</span>
+    </a>
+
+    <div class="nav-section-label">Detection Modules</div>
+    <a href="{{ url_for('message_scan.scan_message') }}" class="nav-link {{ 'active' if active_page == 'message-scan' }}">
+      {{ icon('message-square') }}<span class="nav-label">Message Scan</span>
+    </a>
+    <a href="{{ url_for('url_scan.scan_url') }}" class="nav-link {{ 'active' if active_page == 'url-scan' }}">
+      {{ icon('link') }}<span class="nav-label">URL Detection</span>
+    </a>
+    <a href="{{ url_for('qr_scan.scan_qr') }}" class="nav-link {{ 'active' if active_page == 'qr-scan' }}">
+      {{ icon('qr-code') }}<span class="nav-label">QR Scanner</span>
+    </a>
+    <a href="{{ url_for('voice_scan.scan_voice') }}" class="nav-link {{ 'active' if active_page == 'voice-scan' }}">
+      {{ icon('mic') }}<span class="nav-label">Voice Scan</span>
+    </a>
+    <a href="{{ url_for('screenshot_scan.scan_screenshot') }}" class="nav-link {{ 'active' if active_page == 'screenshot-scan' }}">
+      {{ icon('image') }}<span class="nav-label">Screenshot Scan</span>
+    </a>
+    <a href="{{ url_for('upi_scan.scan_upi') }}" class="nav-link {{ 'active' if active_page == 'upi-scan' }}">
+      {{ icon('zap') }}<span class="nav-label">UPI Fraud Scan</span>
+    </a>
+
+    <div class="nav-section-label">Resources</div>
+    <a href="{{ url_for('knowledge.hub') }}" class="nav-link {{ 'active' if active_page == 'knowledge-hub' }}">
+      {{ icon('book-open') }}<span class="nav-label">Knowledge Hub</span>
+    </a>
+    <a href="{{ url_for('reports.list_reports') }}" class="nav-link {{ 'active' if active_page == 'reports' }}">
+      {{ icon('file-text') }}<span class="nav-label">Reports</span>
+    </a>
+  </nav>
+
+  <div class="sidebar-foot">
+    <div class="system-status">
+      <span class="pulse-dot" aria-hidden="true"></span>
+      <span>All systems watching</span>
+    </div>
+  </div>
+</aside>

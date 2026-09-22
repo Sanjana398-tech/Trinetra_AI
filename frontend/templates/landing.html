@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ page_title }} · TRINETRA AI</title>
+  <meta name="description" content="TRINETRA AI detects, analyzes, and alerts you to cyber scams across every digital channel.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Syne:wght@600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/landing.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/background.css') }}">
+</head>
+<body class="landing-page">
+  <canvas id="cyberMatrixCanvas" class="cyber-matrix-canvas" aria-hidden="true"></canvas>
+  <div class="landing-grid" aria-hidden="true"></div>
+  <div class="landing-noise" aria-hidden="true"></div>
+
+  <header class="landing-nav">
+    <a class="landing-logo" href="#top" aria-label="TRINETRA AI home">
+      <span class="logo-mark" aria-hidden="true"><span></span></span>
+      <span>TRI<span class="logo-accent">NETRA</span> <b>AI</b></span>
+    </a>
+    <nav class="nav-links" aria-label="Primary navigation">
+      <a class="active" href="#top">Home</a>
+      <a href="#features">Features</a>
+      <a href="#how-it-works">How It Works</a>
+    </nav>
+    <a class="nav-login" href="{{ url_for('auth.login') }}"><span aria-hidden="true">&#128272;</span> Login</a>
+  </header>
+
+  <main id="top">
+    <section class="hero-section landing-container">
+      <div class="hero-copy">
+        <div class="eyebrow"><span class="eyebrow-pulse"></span> Advanced multichannel cybersecurity</div>
+        <h1>WELCOME TO<br><strong>TRINETRA <em>AI</em></strong></h1>
+        <p class="hero-tagline">Your Smart Third Eye Against Cyber Scams</p>
+        <p class="hero-description">An intelligent cybersecurity system designed to detect, analyze, and alert users about potential cyber scams across multiple digital channels.</p>
+        <div class="hero-actions">
+          <a class="btn btn-primary" href="{{ url_for('auth.login') }}"><span aria-hidden="true">&#128272;</span> Login</a>
+          <a class="btn btn-secondary" href="{{ url_for('auth.signup') }}"><span aria-hidden="true">&#9997;</span> Create Account</a>
+        </div>
+        <div class="hero-signal"><span>Detect</span><i></i><span>Analyze</span><i></i><span>Alert</span></div>
+      </div>
+
+      <div class="eye-command" aria-label="Third Eye cybersecurity monitor" role="img">
+        <div class="eye-orbit orbit-one"></div><div class="eye-orbit orbit-two"></div>
+        <div class="eye-radar"><span></span></div>
+        <div class="eye-core"><div class="eye-shape"><span class="eye-iris"><b></b></span></div></div>
+        <div class="eye-crosshair crosshair-x"></div><div class="eye-crosshair crosshair-y"></div>
+        <div class="eye-label label-top">THREAT INTELLIGENCE <span>ONLINE</span></div>
+        <div class="eye-label label-bottom">NODE_001 <span>SCANNING</span></div>
+        <div class="module module-sms"><b>SMS</b><small>MESSAGE</small></div>
+        <div class="module module-url"><b>URL</b><small>LINK</small></div>
+        <div class="module module-upi"><b>UPI</b><small>PAYMENT</small></div>
+        <div class="module module-qr"><b>QR</b><small>CODE</small></div>
+        <div class="module module-voice"><b>VOICE</b><small>AUDIO</small></div>
+        <div class="module module-shot"><b>SCREENSHOT</b><small>IMAGE</small></div>
+      </div>
+    </section>
+
+    <section class="feature-section landing-container" id="features">
+      <div class="section-heading"><div class="eyebrow">Six channels. One intelligent shield.</div><h2>ONE SYSTEM. <span>MULTIPLE THREATS.</span></h2></div>
+      <div class="feature-grid">
+        <article class="feature-card"><div class="feature-icon">&#9993;</div><h3>SMS Scam Detection</h3><p>Spot social engineering, impersonation, and high-pressure messages before they reach you.</p><span class="card-index">01 / CHANNEL</span></article>
+        <article class="feature-card"><div class="feature-icon">&#8599;</div><h3>Malicious URL Detection</h3><p>Inspect links for phishing signals, suspicious domains, and unsafe redirects.</p><span class="card-index">02 / CHANNEL</span></article>
+        <article class="feature-card"><div class="feature-icon">&#8377;</div><h3>UPI Fraud Detection</h3><p>Analyze payment handles and transaction patterns for risk indicators.</p><span class="card-index">03 / CHANNEL</span></article>
+        <article class="feature-card"><div class="feature-icon">&#9641;</div><h3>QR Scam Detection</h3><p>Decode QR destinations and surface suspicious payment or redirect behavior.</p><span class="card-index">04 / CHANNEL</span></article>
+        <article class="feature-card"><div class="feature-icon">&#9835;</div><h3>Voice Scam Detection</h3><p>Turn voice into insight with scam-pattern analysis for suspicious conversations.</p><span class="card-index">05 / CHANNEL</span></article>
+        <article class="feature-card"><div class="feature-icon">&#9634;</div><h3>Screenshot Scam Detection</h3><p>Read visual evidence and identify warning signs in messages and payment proofs.</p><span class="card-index">06 / CHANNEL</span></article>
+      </div>
+    </section>
+
+    <section class="process-section landing-container" id="how-it-works">
+      <div class="section-heading"><div class="eyebrow">A clearer signal in three steps</div><h2>HOW IT <span>WORKS.</span></h2></div>
+      <div class="process-grid">
+        <article class="process-step"><div class="step-number">01</div><div><h3>Scan</h3><p>Analyze the incoming message, URL, transaction, QR, voice, or screenshot.</p></div></article>
+        <article class="process-step"><div class="step-number">02</div><div><h3>Analyze</h3><p>AI analyzes the content and identifies suspicious patterns.</p></div></article>
+        <article class="process-step"><div class="step-number">03</div><div><h3>Alert</h3><p>Receive a clear Safe, Suspicious, or Scam result with an understandable alert.</p></div></article>
+      </div>
+    </section>
+
+    <section class="trust-section landing-container">
+      <div><div class="eyebrow">Designed for informed decisions</div><h2>BUILT TO KEEP<br><span>YOU AWARE.</span></h2><p>Trinetra AI turns complex signals into practical context, so you can pause, understand, and decide with confidence.</p></div>
+      <div class="trust-list"><div><b>01</b><span>Multichannel detection</span></div><div><b>02</b><span>Multilingual alerts</span></div><div><b>03</b><span>Explainable AI</span></div><div><b>04</b><span>Risk assessment</span></div><div><b>05</b><span>Real-time alerts</span></div></div>
+    </section>
+  </main>
+
+  <footer class="landing-footer landing-container"><div class="landing-logo"><span class="logo-mark" aria-hidden="true"><span></span></span><span>TRI<span class="logo-accent">NETRA</span> <b>AI</b></span></div><p>Your Smart Third Eye Against Cyber Scams</p><span>Detect <i>&bull;</i> Analyze <i>&bull;</i> Alert</span></footer>
+  <script src="{{ url_for('static', filename='js/landing.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/matrix_background.js') }}"></script>
+</body>
+</html>

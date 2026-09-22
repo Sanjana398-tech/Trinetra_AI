@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+{% from "partials/icons.html" import icon %}
+
+{% block content %}
+
+{# ── Page header card ───────────────────────────────────────────────── #}
+<div class="scan-header-card" style="--module-color:var(--eye-cyan); --module-icon-bg:rgba(0,229,255,0.12); --module-glow:rgba(0,229,255,0.08);">
+  <div class="scan-header-icon">{{ icon('zap') }}</div>
+  <div class="scan-header-text">
+    <div class="section-eyebrow" style="margin-bottom:6px;">UPI Fraud Detection</div>
+    <h2>Analyze a suspicious UPI VPA &amp; Transaction</h2>
+    <p>Enter a UPI ID (VPA) and optional details to evaluate the threat level of a payment request or contact.</p>
+  </div>
+  <div class="scan-status-dot">Model Ready</div>
+</div>
+
+{% if not models_ready %}
+<div class="model-warning">
+  {{ icon('alert-triangle') }}
+  <div>
+    <strong>UPI detection model is unavailable.</strong> Check the saved GNN + XGBoost files in
+    <code>models/upi</code>, then reload this page.
+  </div>
+</div>
+{% endif %}
+
+{% if result and result.error %}
+<div class="scan-error">{{ icon('alert-circle') }} {{ result.error|translate }}</div>
+{% endif %}
+
+{# ── Input form ─────────────────────────────────────────────────────── #}
+<div class="glass-panel">
+  <div class="panel-body">
+    <div class="form-panel-label">{{ icon('zap') }} Transaction Details</div>
+    <form method="post" action="{{ url_for('upi_scan.scan_upi') }}" data-scan-form>
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="form-grid">
+        <div class="form-field span-2">
+          <label for="upi_id">UPI ID (VPA)</label>
+          <input class="form-control" type="text" id="upi_id" name="upi_id"
+                 placeholder="e.g. cashback-winner-100@okicici"
+                 maxlength="128" value="{{ submitted_upi }}"
+                 {{ 'disabled' if not models_ready }}
+                 style="font-family:var(--font-mono);">
+          <div class="field-hint">Enter the Virtual Payment Address (e.g., username@psp).</div>
+        </div>
+        <div class="form-field">
+          <label for="amount">Amount (₹) <span style="color:var(--text-low); font-size:0.8em; text-transform:none; letter-spacing:0;">(Optional)</span></label>
+          <input class="form-control" type="number" step="0.01" id="amount" name="amount"
+                 placeholder="e.g. 4999"
+                 value="{{ submitted_amount }}" {{ 'disabled' if not models_ready }}>
+          <div class="field-hint">Requested payment amount.</div>
+        </div>
+        <div class="form-field">
+          <label for="note">Transaction Note <span style="color:var(--text-low); font-size:0.8em; text-transform:none; letter-spacing:0;">(Optional)</span></label>
+          <input class="form-control" type="text" id="note" name="note"
+                 placeholder="e.g. KYC update verification"
+                 maxlength="256" value="{{ submitted_note }}" {{ 'disabled' if not models_ready }}>
+          <div class="field-hint">Any message or description attached.</div>
+        </div>
+      </div>
+      <div class="form-actions" style="margin-top:18px;">
+        <button type="submit" class="btn btn-primary" {{ 'disabled' if not models_ready }}>
+          {{ icon('radar') }} Analyze UPI Transaction
+        </button>
+        <button type="reset" class="btn btn-ghost">Clear</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{# ── Results ────────────────────────────────────────────────────────── #}
+{% if result and not result.error %}
+
+<div class="verdict-hero {{ result.verdict }}" style="margin-top:24px;">
+  <div class="vh-icon">
+    {{ icon('shield' if result.verdict == 'safe' else ('alert-triangle' if result.verdict == 'suspicious' else 'x-circle')) }}
+  </div>
+  <div>
+    <div class="vh-title">{{ result.verdict|verdict_label }}</div>
+    <p class="vh-sub">
+      {% if result.verdict == 'safe' %}{{ _('No common fraud indicators detected in this UPI request.') }}
+      {% elif result.verdict == 'suspicious' %}{{ _('This UPI transaction has characteristics worth double-checking.') }}
+      {% else %}{{ _('This UPI transaction strongly matches known scam patterns. Do not proceed with payment.') }}
+      {% endif %}
+    </p>
+  </div>
+  <div class="verdict-ring-wrap">
+    <div class="verdict-ring" data-confidence="{{ result.confidence }}">
+      <svg viewBox="0 0 84 84">
+        <circle class="vr-track" cx="42" cy="42" r="35"/>
+        <circle class="vr-fill" cx="42" cy="42" r="35" stroke-dasharray="219.91" stroke-dashoffset="219.91"/>
+      </svg>
+      <div class="verdict-ring-center">
+        <div class="vrc-num">{{ result.confidence }}%</div>
+        <div class="vrc-lbl">{{ _('Confidence') }}</div>
+      </div>
+    </div>
+    <div class="vh-score-secondary">
+      <div class="num">{{ result.risk }}</div>
+      <div class="lbl">{{ _('Risk Score') }}</div>
+    </div>
+  </div>
+</div>
+
+<div class="detail-grid">
+  <div class="glass-panel">
+    <div class="panel-head">
+      <div><h2>{{ _('Why this verdict?') }}</h2><div class="panel-sub">Risk factors found in VPA &amp; note</div></div>
+    </div>
+    <div class="panel-body">
+      <ul class="reason-list">
+        {% for reason in result.reasons %}
+        <li>{{ icon('alert-circle') }}<span>{{ reason|translate }}</span></li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+
+  <div class="glass-panel">
+    <div class="panel-head"><div><h2>{{ _('Recommended Actions') }}</h2><div class="panel-sub">Cyber safety tips</div></div></div>
+    <div class="panel-body">
+      <ul class="tip-list">
+        {% for tip in result.tips %}
+        <li>{{ icon('shield') }}<span>{{ tip|translate }}</span></li>
+        {% endfor %}
+      </ul>
+      <a href="{{ url_for('history.view_record', record_id=result.record_id) }}" class="btn btn-ghost btn-block" style="margin-top:18px;">
+        {{ icon('file-text') }} {{ _('View Full Scan Record') }}
+      </a>
+    </div>
+  </div>
+</div>
+
+{% endif %}
+{% endblock %}

@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+{% from "partials/icons.html" import icon %}
+
+{% block content %}
+
+{# ── Page header card ───────────────────────────────────────────────── #}
+<div class="scan-header-card" style="--module-color:var(--eye-cyan); --module-icon-bg:rgba(0,229,255,0.12); --module-glow:rgba(0,229,255,0.1);">
+  <div class="scan-header-icon">{{ icon('message-square') }}</div>
+  <div class="scan-header-text">
+    <div class="section-eyebrow" style="margin-bottom:6px;">Message Scam Detection</div>
+    <h2>Analyze an SMS, Email, or WhatsApp message</h2>
+    <p>Paste any message below. DistilBERT checks language patterns against known scam techniques and explains exactly what it found.</p>
+  </div>
+  <div class="scan-status-dot">Model Ready</div>
+</div>
+
+{% if not models_ready %}
+<div class="model-warning">
+  {{ icon('alert-triangle') }}
+  <div>
+    <strong>Detection model not trained yet.</strong> Run
+    <code>python training/generate_datasets.py</code> then
+    <code>python training/train_message_model.py</code> from the project root, then reload this page.
+  </div>
+</div>
+{% endif %}
+
+{% if result and result.error %}
+<div class="scan-error">{{ icon('alert-circle') }} {{ result.error|translate }}</div>
+{% endif %}
+
+{# ── Input form ─────────────────────────────────────────────────────── #}
+<div class="glass-panel">
+  <div class="panel-body">
+    <div class="form-panel-label">{{ icon('edit-3') }} Input</div>
+        <form method="post" action="{{ url_for('message_scan.scan_message') }}"
+          data-scan-form data-message-api-url="{{ url_for('api.analyze_message') }}"
+          id="messageScanForm">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="form-field">
+        <label for="message_text">Message Content</label>
+        <textarea class="form-control" id="message_text" name="message_text" rows="6"
+                  placeholder="Paste the SMS, email, or WhatsApp message here…"
+                  maxlength="4000"
+                  {{ 'disabled' if not models_ready }}>{{ submitted_text }}</textarea>
+        <div class="char-counter" data-char-counter="message_text"></div>
+        <div class="field-hint">Up to 4 000 characters. Nothing leaves this app.</div>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary" {{ 'disabled' if not models_ready }}>
+          {{ icon('radar') }} Analyze Message
+        </button>
+        <button type="reset" class="btn btn-ghost">Clear</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div id="messageScanError" class="scan-error" role="alert" hidden></div>
+<div id="messageScanResult" aria-live="polite" hidden></div>
+
+{# ── Results ────────────────────────────────────────────────────────── #}
+{% if result and not result.error %}
+
+{# Verdict hero #}
+<div class="verdict-hero {{ result.verdict }}" style="margin-top:24px;">
+  <div class="vh-icon">
+    {{ icon('shield' if result.verdict == 'safe' else ('alert-triangle' if result.verdict == 'suspicious' else 'x-circle')) }}
+  </div>
+  <div>
+    <div class="vh-title">{{ result.verdict|verdict_label }}</div>
+    <p class="vh-sub">
+      {% if result.verdict == 'safe' %}{{ _('No common scam patterns detected in this message.') }}
+      {% elif result.verdict == 'suspicious' %}{{ _('This message has characteristics worth double-checking.') }}
+      {% else %}{{ _('This message strongly matches known scam patterns. Do not act on it.') }}
+      {% endif %}
+    </p>
+  </div>
+  <div class="verdict-ring-wrap">
+    <div class="verdict-ring" data-confidence="{{ result.confidence }}">
+      <svg viewBox="0 0 84 84">
+        <circle class="vr-track" cx="42" cy="42" r="35"/>
+        <circle class="vr-fill" cx="42" cy="42" r="35" stroke-dasharray="219.91" stroke-dashoffset="219.91"/>
+      </svg>
+      <div class="verdict-ring-center">
+        <div class="vrc-num">{{ result.confidence }}%</div>
+        <div class="vrc-lbl">{{ _('Confidence') }}</div>
+      </div>
+    </div>
+    <div class="vh-score-secondary">
+      <div class="num">{{ result.risk }}</div>
+      <div class="lbl">{{ _('Risk Score') }}</div>
+    </div>
+  </div>
+</div>
+
+{# Reasons + Tips + Probability #}
+<div class="detail-grid" style="margin-bottom:20px;">
+  <div class="glass-panel">
+    <div class="panel-head">
+      <div><h2>{{ _('Why this verdict?') }}</h2><div class="panel-sub">Patterns detected in the message</div></div>
+    </div>
+    <div class="panel-body">
+      <ul class="reason-list">
+        {% for reason in result.reasons %}
+        <li>{{ icon('check-circle' if loop.first else 'alert-circle') }}<span>{{ reason|translate }}</span></li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+
+  <div style="display:flex; flex-direction:column; gap:20px;">
+    <div class="glass-panel">
+      <div class="panel-head"><div><h2>{{ _('Probability') }}</h2><div class="panel-sub">DistilBERT output</div></div></div>
+      <div class="panel-body">
+        <div class="prob-bars">
+          <div class="prob-row">
+            <div class="prob-label-row">
+              <span class="prob-label">{{ _('Safe') }}</span>
+              <span class="prob-value">{{ result.safe_probability }}%</span>
+            </div>
+            <div class="prob-track"><div class="prob-fill safe-fill" style="width:{{ result.safe_probability }}%"></div></div>
+          </div>
+          <div class="prob-row">
+            <div class="prob-label-row">
+              <span class="prob-label">{{ _('Scam') }}</span>
+              <span class="prob-value">{{ result.scam_probability }}%</span>
+            </div>
+            <div class="prob-track"><div class="prob-fill scam-fill" style="width:{{ result.scam_probability }}%"></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="glass-panel">
+      <div class="panel-head"><div><h2>{{ _('Recommended Actions') }}</h2><div class="panel-sub">Cyber safety tips</div></div></div>
+      <div class="panel-body">
+        <ul class="tip-list">
+          {% for tip in result.tips %}
+          <li>{{ icon('shield') }}<span>{{ tip|translate }}</span></li>
+          {% endfor %}
+        </ul>
+        <a href="{{ url_for('history.view_record', record_id=result.record_id) }}" class="btn btn-ghost btn-block" style="margin-top:18px;">
+          {{ icon('file-text') }} {{ _('View Full Scan Record') }}
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endif %}
+{% endblock %}

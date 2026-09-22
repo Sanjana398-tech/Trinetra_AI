@@ -1,0 +1,269 @@
+{% extends "base.html" %}
+{% from "partials/icons.html" import icon %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="section-eyebrow">Live Threat Monitoring</div>
+<h2 style="margin-bottom:22px;">Welcome back. Here's what the Third Eye is watching.</h2>
+
+<!-- ============================= STAT CARDS ============================= -->
+<div class="stat-grid">
+  <div class="glass-panel stat-card" style="--glow: rgba(0,229,255,0.18); animation-delay:0ms;">
+    <div class="stat-top">
+      <div class="stat-icon" style="--tint: var(--eye-cyan); --tint-bg: rgba(0,229,255,0.12);">{{ icon('activity') }}</div>
+      <div class="stat-trend up">{{ icon('trending-up') }} live</div>
+    </div>
+    <div class="stat-value" data-stat="total">{{ stats.total }}</div>
+    <div class="stat-label">Total Scans</div>
+  </div>
+
+  <div class="glass-panel stat-card" style="--glow: rgba(0,255,163,0.18); animation-delay:60ms;">
+    <div class="stat-top">
+      <div class="stat-icon" style="--tint: var(--safe); --tint-bg: rgba(0,255,163,0.12);">{{ icon('shield') }}</div>
+      <div class="stat-trend down">{{ icon('trending-up') }} stable</div>
+    </div>
+    <div class="stat-value" data-stat="trust">{{ stats.trust_score }}%</div>
+    <div class="stat-label">Trust Score</div>
+  </div>
+
+  <div class="glass-panel stat-card" style="--glow: rgba(255,56,96,0.18); animation-delay:120ms;">
+    <div class="stat-top">
+      <div class="stat-icon" style="--tint: var(--danger); --tint-bg: rgba(255,56,96,0.12);">{{ icon('alert-triangle') }}</div>
+      <div class="stat-trend up">{{ icon('trending-up') }} watch</div>
+    </div>
+    <div class="stat-value" data-stat="scam">{{ stats.scam }}</div>
+    <div class="stat-label">Threats Blocked</div>
+  </div>
+
+  <div class="glass-panel stat-card" style="--glow: rgba(123,97,255,0.18); animation-delay:180ms;">
+    <div class="stat-top">
+      <div class="stat-icon" style="--tint: var(--eye-violet); --tint-bg: rgba(123,97,255,0.14);">{{ icon('radar') }}</div>
+      <div class="stat-trend down">{{ icon('trending-up') }} tracked</div>
+    </div>
+    <div class="stat-value" data-stat="avgRisk">{{ stats.avg_risk }}</div>
+    <div class="stat-label">Avg Risk Score</div>
+  </div>
+</div>
+
+<!-- ============================= MAIN GRID ============================= -->
+<div class="dash-grid">
+  <div class="glass-panel">
+    <div class="panel-head">
+      <div>
+        <h2>Threat Activity — Last 7 Days</h2>
+        <div class="panel-sub">Scam vs. safe verdicts detected per day</div>
+      </div>
+    </div>
+    <div class="panel-body">
+      <div class="chart-box">
+        <canvas id="trendChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <div class="glass-panel">
+    <div class="panel-head">
+      <div>
+        <h2>Risk Overview</h2>
+        <div class="panel-sub">Verdict distribution</div>
+      </div>
+    </div>
+    <div class="panel-body">
+      <div class="risk-ring-wrap">
+        <div class="risk-ring">
+          <svg viewBox="0 0 120 120">
+            <circle class="risk-ring-track" cx="60" cy="60" r="50"/>
+            <circle id="riskRingFill" class="risk-ring-fill" cx="60" cy="60" r="50"
+                    stroke-dasharray="{{ 314.159 }}" stroke-dashoffset="{{ 314.159 }}"/>
+          </svg>
+          <div class="risk-ring-center">
+            <div class="val" data-stat="trustLabel">{{ stats.trust_score }}%</div>
+            <div class="lbl">Trust Score</div>
+          </div>
+        </div>
+        <div class="legend-row">
+          <div class="legend-item"><span class="legend-dot" style="background:var(--safe);"></span>Safe · <span data-stat="safe">{{ stats.safe }}</span></div>
+          <div class="legend-item"><span class="legend-dot" style="background:var(--warn);"></span>Suspicious · <span data-stat="suspicious">{{ stats.suspicious }}</span></div>
+          <div class="legend-item"><span class="legend-dot" style="background:var(--danger);"></span>Scam · <span data-stat="scamLegend">{{ stats.scam }}</span></div>
+        </div>
+        <div class="chart-box" style="height:160px; margin-top:12px;">
+          <canvas id="riskLevelChart"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================= SECONDARY GRID ============================= -->
+<div class="dash-grid-secondary">
+  <div class="glass-panel">
+    <div class="panel-head">
+      <div>
+        <h2>Threat Summary by Channel</h2>
+        <div class="panel-sub">Which input types are being scanned</div>
+      </div>
+    </div>
+    <div class="panel-body">
+      <div class="chart-box" style="height:200px; margin-bottom:14px;">
+        <canvas id="typeDistChart"></canvas>
+      </div>
+      <div class="threat-list" id="channelBars">
+        {% set channel_meta = {
+          'message': ('message-square', 'var(--eye-cyan)', 'rgba(0,229,255,0.12)', 'Message'),
+          'url': ('link', 'var(--eye-violet)', 'rgba(123,97,255,0.14)', 'URL'),
+          'qr': ('qr-code', 'var(--warn)', 'rgba(255,176,32,0.12)', 'QR'),
+          'voice': ('mic', 'var(--danger)', 'rgba(255,56,96,0.12)', 'Voice'),
+          'screenshot': ('image', 'var(--safe)', 'rgba(0,255,163,0.12)', 'Payment'),
+          'upi': ('zap', 'var(--eye-cyan)', 'rgba(0,229,255,0.12)', 'UPI')
+        } %}
+        {% set max_count = (stats.type_counts.values()|list + [1]) | max %}
+        {% for type_key, meta in channel_meta.items() %}
+          {% set count = stats.type_counts.get(type_key, 0) %}
+          <div class="threat-row" data-channel="{{ type_key }}">
+            <div class="t-icon" style="color:{{ meta[1] }}; background:{{ meta[2] }};">{{ icon(meta[0]) }}</div>
+            <div class="t-info">
+              <div class="t-title">{{ meta[3] }} Scans</div>
+              <div class="t-track progress-track">
+                <div class="progress-fill" data-channel-bar="{{ type_key }}" style="width:{{ (count / max_count * 100) | round(0) }}%; background:{{ meta[1] }};"></div>
+              </div>
+            </div>
+            <div class="t-count" data-channel-count="{{ type_key }}">{{ count }}</div>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <div class="glass-panel">
+    <div class="panel-head">
+      <div>
+        <h2>Quick Scan</h2>
+        <div class="panel-sub">Jump straight into a module</div>
+      </div>
+    </div>
+    <div class="panel-body">
+      <div class="quick-scan-grid">
+        <a class="quick-scan-tile" href="{{ url_for('message_scan.scan_message') }}" style="--tile-color: var(--eye-cyan); --tile-bg: rgba(0,229,255,0.12); --tile-shadow: rgba(0,229,255,0.15);">
+          <div class="qs-icon">{{ icon('message-square') }}</div>
+          <div class="qs-title">Message</div>
+          <div class="qs-desc">SMS · Email · WhatsApp</div>
+        </a>
+        <a class="quick-scan-tile" href="{{ url_for('url_scan.scan_url') }}" style="--tile-color: var(--eye-violet); --tile-bg: rgba(123,97,255,0.14); --tile-shadow: rgba(123,97,255,0.15);">
+          <div class="qs-icon">{{ icon('link') }}</div>
+          <div class="qs-title">URL</div>
+          <div class="qs-desc">Phishing detection</div>
+        </a>
+        <a class="quick-scan-tile" href="{{ url_for('qr_scan.scan_qr') }}" style="--tile-color: var(--warn); --tile-bg: rgba(255,176,32,0.12); --tile-shadow: rgba(255,176,32,0.15);">
+          <div class="qs-icon">{{ icon('qr-code') }}</div>
+          <div class="qs-title">QR Code</div>
+          <div class="qs-desc">Decode & analyze</div>
+        </a>
+        <a class="quick-scan-tile" href="{{ url_for('voice_scan.scan_voice') }}" style="--tile-color: var(--danger); --tile-bg: rgba(255,56,96,0.12); --tile-shadow: rgba(255,56,96,0.15);">
+          <div class="qs-icon">{{ icon('mic') }}</div>
+          <div class="qs-title">Voice</div>
+          <div class="qs-desc">Call transcript scan</div>
+        </a>
+        <a class="quick-scan-tile" href="{{ url_for('screenshot_scan.scan_screenshot') }}" style="--tile-color: var(--safe); --tile-bg: rgba(0,255,163,0.12); --tile-shadow: rgba(0,255,163,0.15);">
+          <div class="qs-icon">{{ icon('image') }}</div>
+          <div class="qs-title">Screenshot</div>
+          <div class="qs-desc">Payment proof check</div>
+        </a>
+        <a class="quick-scan-tile" href="{{ url_for('upi_scan.scan_upi') }}" style="--tile-color: var(--eye-cyan); --tile-bg: rgba(0,229,255,0.12); --tile-shadow: rgba(0,229,255,0.15);">
+          <div class="qs-icon">{{ icon('zap') }}</div>
+          <div class="qs-title">UPI Scan</div>
+          <div class="qs-desc">VPA &amp; Payment checks</div>
+        </a>
+        <a class="quick-scan-tile" href="{{ url_for('knowledge.hub') }}" style="--tile-color: var(--eye-cyan); --tile-bg: rgba(0,229,255,0.12); --tile-shadow: rgba(0,229,255,0.15);">
+          <div class="qs-icon">{{ icon('book-open') }}</div>
+          <div class="qs-title">Learn</div>
+          <div class="qs-desc">Cyber safety hub</div>
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================= RECENT SCANS ============================= -->
+<div class="glass-panel">
+  <div class="panel-head">
+    <div>
+      <h2>Recent Scans</h2>
+      <div class="panel-sub">Latest activity across all channels</div>
+    </div>
+    <a href="{{ url_for('history.list_history') }}" class="btn btn-ghost btn-sm">
+      View All {{ icon('arrow-up-right') }}
+    </a>
+  </div>
+  <div class="table-toolbar">
+    <div class="filter-pills">
+      <button class="filter-pill active" data-filter="all">All</button>
+      <button class="filter-pill" data-filter="safe">Safe</button>
+      <button class="filter-pill" data-filter="suspicious">Suspicious</button>
+      <button class="filter-pill" data-filter="scam">Scam</button>
+    </div>
+  </div>
+  <div class="panel-body table-scroll" id="recentScansBody">
+    {% if stats.recent %}
+    <table class="data-table" id="recentScansTable">
+      <thead>
+        <tr>
+          <th>Channel</th>
+          <th>Input</th>
+          <th>Verdict</th>
+          <th>Confidence</th>
+          <th>Scanned</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% set icon_for_type = {'message':'message-square','url':'link','qr':'qr-code','voice':'mic','screenshot':'image','upi':'zap'} %}
+        {% for scan in stats.recent %}
+        <tr data-verdict="{{ scan.verdict }}">
+          <td><span class="type-chip">{{ icon(icon_for_type.get(scan.scan_type, 'activity')) }}{{ channel_labels.get(scan.scan_type, scan.scan_type|capitalize) }}</span></td>
+          <td class="cell-primary" style="max-width:340px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+            <a href="{{ url_for('history.view_record', record_id=scan.id) }}" style="color:inherit;">{{ scan.input_summary }}</a>
+          </td>
+          <td><span class="badge badge-{{ scan.verdict }}">{{ scan.verdict|verdict_label }}</span></td>
+          <td class="cell-mono">{{ scan.confidence_score }}%</td>
+          <td class="cell-mono">{{ scan.created_at.strftime('%d %b, %I:%M %p') }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state" id="recentEmptyState">
+      {{ icon('radar') }}
+      <h3>No scans yet</h3>
+      <p>Run your first scan from a Quick Scan tile above and it will show up here.</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/chart.umd.min.js') }}"></script>
+<script>
+  window.__TRINETRA_DASHBOARD__ = {{ {
+    'trustScore': stats.trust_score,
+    'total': stats.total,
+    'safe': stats.safe,
+    'suspicious': stats.suspicious,
+    'scam': stats.scam,
+    'avgRisk': stats.avg_risk,
+    'typeCounts': stats.type_counts,
+    'typeLabels': stats.type_labels,
+    'typeValues': stats.type_values,
+    'riskLevels': stats.risk_levels,
+    'trendLabels': stats.trend_labels,
+    'trendScam': stats.trend_scam,
+    'trendSafe': stats.trend_safe,
+    'trendSuspicious': stats.trend_suspicious,
+    'recent': stats.recent_serialized,
+    'statsUrl': url_for('dashboard.dashboard_stats_api'),
+  } | tojson }};
+</script>
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+{% endblock %}
