@@ -19,6 +19,53 @@ MODEL_PATH = os.path.join(
     "distilbert"
 )
 
+# ==========================================
+# HUGGING FACE MODEL DOWNLOAD
+# ==========================================
+
+HF_REPO_ID = os.getenv(
+    "HF_REPO_ID",
+    "S45-s/trinetra-distilbert"
+)
+
+HF_TOKEN = os.getenv("HF_TOKEN")
+
+try:
+    from huggingface_hub import snapshot_download
+
+    # Download only when the model file is missing.
+    # Locally, your existing model will continue to be used.
+    model_file = os.path.join(
+        MODEL_PATH,
+        "model.safetensors"
+    )
+
+    if not os.path.exists(model_file):
+        logger.info(
+            "DistilBERT model not found locally. Downloading from Hugging Face..."
+        )
+
+        snapshot_download(
+            repo_id=HF_REPO_ID,
+            repo_type="model",
+            local_dir=MODEL_PATH,
+            token=HF_TOKEN
+        )
+
+        logger.info(
+            "DistilBERT model downloaded successfully."
+        )
+    else:
+        logger.info(
+            "DistilBERT model already exists locally."
+        )
+
+except Exception as download_error:
+    logger.warning(
+        "Could not download DistilBERT model from Hugging Face: %s",
+        download_error
+    )
+
 
 # ==========================================
 # DEVICE
@@ -26,20 +73,23 @@ MODEL_PATH = os.path.join(
 
 try:
     import torch
+
     DEVICE = torch.device(
         "cuda" if torch.cuda.is_available() else "cpu"
     )
-except (ImportError, OSError) as _torch_error:
+
+except (ImportError, OSError) as torch_error:
     logger.warning(
         "PyTorch is unavailable; message classification is disabled: %s",
-        _torch_error,
+        torch_error,
     )
+
     torch = None
     DEVICE = None
 
 
 # ==========================================
-# LOAD TOKENIZER + MODEL (graceful fallback)
+# LOAD TOKENIZER + MODEL
 # ==========================================
 
 tokenizer = None
@@ -51,19 +101,31 @@ try:
         DistilBertForSequenceClassification,
     )
 
-    tokenizer = DistilBertTokenizerFast.from_pretrained(MODEL_PATH)
-    model = DistilBertForSequenceClassification.from_pretrained(MODEL_PATH)
+    tokenizer = DistilBertTokenizerFast.from_pretrained(
+        MODEL_PATH
+    )
+
+    model = DistilBertForSequenceClassification.from_pretrained(
+        MODEL_PATH
+    )
+
     model.to(DEVICE)
     model.eval()
-    logger.info("DistilBERT model loaded from %s on device=%s", MODEL_PATH, DEVICE)
 
-except Exception as _load_error:
+    logger.info(
+        "DistilBERT model loaded from %s on device=%s",
+        MODEL_PATH,
+        DEVICE
+    )
+
+except Exception as load_error:
     logger.warning(
         "DistilBERT model could not be loaded (model=%s): %s — "
         "message classification is unavailable.",
         MODEL_PATH,
-        _load_error,
+        load_error,
     )
+
     model = None
     tokenizer = None
 
@@ -83,10 +145,8 @@ LABELS = {
 # ==========================================
 
 def predict_message(text):
-    """Run text through DistilBERT and return prediction dict.
+    """Run text through DistilBERT and return prediction dict."""
 
-    Returns None if the model is unavailable.
-    """
     if model is None or tokenizer is None or torch is None:
         return None
 

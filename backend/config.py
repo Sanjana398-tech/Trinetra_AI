@@ -60,7 +60,7 @@ class BaseConfig:
 
     DISTILBERT_MODEL_PATH = str(MODELS_DIR / "distilbert")
 
-    URL_MODEL_PATH = str(MODELS_DIR / "url_model.pkl")
+    URL_MODEL_PATH = str(MODELS_DIR / "xgboost" / "url_model.pkl")
     UPI_MODEL_PATH = str(MODELS_DIR / "upi_model.pkl")
     # Voice Scam Detection (Phase 4): smallest Whisper checkpoint by default —
     # fast and small enough to download on a typical dev/demo machine.
