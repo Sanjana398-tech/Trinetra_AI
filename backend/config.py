@@ -43,6 +43,12 @@ class BaseConfig:
 
     SECRET_KEY = os.environ.get("SECRET_KEY", "dev-insecure-key-change-me")
 
+    SECURE_CHAT_API_KEY = os.environ.get("SECURE_CHAT_API_KEY", "")
+    SECURE_CHAT_ORIGIN = os.environ.get("SECURE_CHAT_ORIGIN", "").rstrip("/")
+    SECURE_CHAT_REDIRECT_URI = os.environ.get("SECURE_CHAT_REDIRECT_URI", "")
+    SECURE_CHAT_CODE_TTL_SECONDS = int(os.environ.get("SECURE_CHAT_CODE_TTL_SECONDS", "300"))
+    SECURE_CHAT_TOKEN_TTL_SECONDS = int(os.environ.get("SECURE_CHAT_TOKEN_TTL_SECONDS", "3600"))
+
     SQLALCHEMY_DATABASE_URI = os.environ.get(
         "DATABASE_URL", f"sqlite:///{DATABASE_DIR / 'trinetra.db'}"
     )

@@ -87,18 +87,16 @@ def create_app(config_name: str = None) -> Flask:
     # and secure-cookie checks behave correctly behind HTTPS termination.
     app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
 
-    # ---- CORS for Secure Chat integration ---------------------------------
-    # Allow the Secure Chat backend (localhost:3000) to call the analysis API.
-    CORS(app, resources={
-        r"/api/*": {
-            "origins": [
-                "http://localhost:3000",
-                "http://127.0.0.1:3000",
-            ],
-            "methods": ["POST", "OPTIONS"],
-            "allow_headers": ["Content-Type"],
-        }
-    })
+    # Browser access is limited to the explicitly configured Secure Chat origin.
+    secure_chat_origin = app.config.get("SECURE_CHAT_ORIGIN")
+    if secure_chat_origin:
+        CORS(app, resources={
+            r"/api/*": {
+                "origins": [secure_chat_origin],
+                "methods": ["POST", "OPTIONS"],
+                "allow_headers": ["Content-Type", "X-Secure-Chat-Key", "Authorization"],
+            }
+        })
 
     # ---- Logging ---------------------------------------------------------
     logging.basicConfig(
@@ -139,6 +137,7 @@ def create_app(config_name: str = None) -> Flask:
     from backend.routes.knowledge import knowledge_bp
     from backend.routes.reports import reports_bp
     from backend.routes.api import api_bp
+    from backend.routes.secure_chat import secure_chat_bp
     from backend.routes.analytics import analytics_bp
 
     app.register_blueprint(auth_bp)
@@ -154,6 +153,7 @@ def create_app(config_name: str = None) -> Flask:
     app.register_blueprint(knowledge_bp)
     app.register_blueprint(reports_bp)
     app.register_blueprint(api_bp)
+    app.register_blueprint(secure_chat_bp)
 
     # Exempt the API blueprint from CSRF (server-to-server calls from Secure Chat)
     csrf.exempt(api_bp)
@@ -162,6 +162,17 @@ def create_app(config_name: str = None) -> Flask:
     with app.app_context():
         from backend import db_models  # noqa: F401  (registers models with SQLAlchemy)
         db.create_all()
+
+        user_columns = {
+            column["name"]
+            for column in db.inspect(db.engine).get_columns("users")
+        }
+        if "secure_chat_enabled" not in user_columns:
+            db.session.execute(db.text(
+                "ALTER TABLE users "
+                "ADD COLUMN secure_chat_enabled BOOLEAN NOT NULL DEFAULT FALSE"
+            ))
+            db.session.commit()
 
         # ``create_all`` does not update tables that already exist. Add fields
         # introduced after the initial local database schema was created.

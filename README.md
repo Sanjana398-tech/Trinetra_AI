@@ -353,10 +353,36 @@ Each script prints accuracy, a per-class precision/recall report, and a confusio
 any time by re-running the relevant script — the Flask app loads models lazily and picks up new
 files on the next restart.
 
-## API Documentation
+## Secure Chat Integration API
 
-Not applicable yet — Phase 1 ships no JSON API endpoints, only server-rendered pages.
-This section will be filled in as each module adds routes.
+Secure Chat must call Trinetra from its backend, and must check its own stored
+`Trinetra AI Protection` preference before making a request. Never put
+`SECURE_CHAT_API_KEY` or the account token in browser code. Each Trinetra user
+must separately sign in and explicitly consent at
+`/integrations/secure-chat/authorize?state=<Secure-Chat-generated-random-state>`.
+Trinetra redirects to the configured `SECURE_CHAT_REDIRECT_URI` with a short-lived,
+single-use authorization code and the unchanged `state` value. Secure Chat must
+verify that state before exchanging the code.
+
+The Secure Chat backend exchanges the code with `POST /api/secure-chat/v1/token`
+using `X-Secure-Chat-Key: <SECURE_CHAT_API_KEY>` and JSON `{ "code": "..." }`.
+It then calls `POST /api/secure-chat/v1/detect` with the same service header,
+`Authorization: Bearer <access_token>`, and one of these JSON shapes:
+
+- `{ "type": "message", "text": "...", "language": "en" }`
+- `{ "type": "url", "url": "https://...", "language": "en" }`
+- `{ "type": "upi", "upi_id": "name@bank", "amount": 100, "note": "...", "language": "en" }`
+
+Successful responses contain `verdict`, `confidence`, `risk_score`,
+`explanation`, `reasons`, `tips`, `detection_type`, `language`, localized fields,
+and a Trinetra `scan_id`. The account token is signed, short-lived, tied to the
+consenting Trinetra user, and checked against the current opt-in status on every
+detection. Users can revoke access from the same consent page.
+
+Configure `SECURE_CHAT_API_KEY`, `SECURE_CHAT_ORIGIN` (the exact deployed browser
+origin, no wildcard), `SECURE_CHAT_REDIRECT_URI`, and the code/token TTL values
+from `.env.example`. Existing JSON API routes retain CORS support only for that
+same configured origin; server-to-server requests do not depend on CORS.
 
 ---
 
