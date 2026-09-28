@@ -23,6 +23,11 @@
     <a href="{{ url_for('analytics.analytics_page') }}" class="nav-link {{ 'active' if active_page == 'analytics' }}">
       {{ icon('bar-chart') }}<span class="nav-label">Advanced Analytics</span>
     </a>
+    {% if current_user.is_authenticated and current_user.is_admin %}
+    <a href="{{ url_for('analytics.universal_analytics_page') }}" class="nav-link {{ 'active' if active_page == 'admin-analytics' }}">
+      {{ icon('users') }}<span class="nav-label">Universal Analytics</span>
+    </a>
+    {% endif %}
 
     <div class="nav-section-label">Detection Modules</div>
     <a href="{{ url_for('message_scan.scan_message') }}" class="nav-link {{ 'active' if active_page == 'message-scan' }}">

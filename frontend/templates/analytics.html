@@ -7,15 +7,17 @@
 {% endblock %}
 
 {% block content %}
-<div class="section-eyebrow">SOC Intelligence</div>
+<div class="section-eyebrow">{{ 'Universal / Admin Analytics' if universal|default(false) else 'SOC Intelligence' }}</div>
 <div class="analytics-hero">
   <div>
-    <h2>Advanced Analytics</h2>
-    <p>Date, detection type, and verdict analysis across your scan history.</p>
+    <h2>{{ 'Universal Analytics Dashboard' if universal|default(false) else 'Advanced Analytics' }}</h2>
+    <p>{{ 'Aggregated scan intelligence across all registered accounts.' if universal|default(false) else 'Date, detection type, and verdict analysis across your scan history.' }}</p>
   </div>
+  {% if not universal|default(false) %}
   <button type="button" class="btn btn-primary" id="exportReportBtn">
     {{ icon('download') }} Export Report
   </button>
+  {% endif %}
 </div>
 
 <div class="glass-panel analytics-filters">
@@ -66,7 +68,19 @@
   </div>
 </div>
 
-<div class="stat-grid analytics-stat-grid" id="summaryCards">
+<div class="stat-grid analytics-stat-grid{{ ' analytics-stat-grid-universal' if universal|default(false) else '' }}" id="summaryCards">
+  {% if universal|default(false) %}
+  <div class="glass-panel stat-card">
+    <div class="stat-top"><div class="stat-icon" style="--tint: var(--eye-cyan); --tint-bg: rgba(0,229,255,0.12);">{{ icon('users') }}</div></div>
+    <div class="stat-value" data-stat="totalUsers">0</div>
+    <div class="stat-label">Registered Users</div>
+  </div>
+  <div class="glass-panel stat-card">
+    <div class="stat-top"><div class="stat-icon" style="--tint: var(--safe); --tint-bg: rgba(0,255,163,0.12);">{{ icon('activity') }}</div></div>
+    <div class="stat-value" data-stat="activeUsers">0</div>
+    <div class="stat-label">Scanning Users</div>
+  </div>
+  {% endif %}
   <div class="glass-panel stat-card" style="--glow: rgba(0,229,255,0.18);">
     <div class="stat-top">
       <div class="stat-icon" style="--tint: var(--eye-cyan); --tint-bg: rgba(0,229,255,0.12);">{{ icon('activity') }}</div>

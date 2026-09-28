@@ -1,6 +1,8 @@
 import unittest
 from datetime import datetime, timedelta
 
+from flask import g
+
 from backend import create_app
 from backend.db_models import ScanHistory, User
 from backend.extensions import db
@@ -27,6 +29,8 @@ class AnalyticsQueryTests(unittest.TestCase):
         cls.context.pop()
 
     def setUp(self):
+        g.pop("_login_user", None)
+        db.session.remove()
         db.session.query(ScanHistory).delete()
         db.session.query(User).delete()
         db.session.commit()
@@ -37,6 +41,12 @@ class AnalyticsQueryTests(unittest.TestCase):
             password_hash="test",
         )
         db.session.add(self.user)
+        self.other_user = User(
+            full_name="Second Analytics Tester",
+            email="analytics-test-two@example.com",
+            password_hash="test",
+        )
+        db.session.add(self.other_user)
         db.session.flush()
 
         now = datetime.utcnow()
@@ -67,6 +77,13 @@ class AnalyticsQueryTests(unittest.TestCase):
                     verdict="suspicious",
                     risk_score=60,
                     created_at=now - timedelta(days=2),
+                ),
+                ScanHistory(
+                    user_id=self.other_user.id,
+                    scan_type="url",
+                    input_summary="other account scan",
+                    verdict="safe",
+                    created_at=now,
                 ),
             ]
         )
@@ -103,6 +120,44 @@ class AnalyticsQueryTests(unittest.TestCase):
         self.assertIn("typeDate", payload)
         self.assertIn("recentThreats", payload)
         self.assertIn("table", payload)
+
+    def test_universal_overview_aggregates_registered_accounts(self):
+        from backend.utils.analytics_query import build_universal_overview
+
+        personal = build_overview(self.user, {"range": "all"})
+        universal = build_universal_overview({"range": "all"})
+
+        self.assertEqual(personal["summary"]["total"], 3)
+        self.assertEqual(universal["summary"]["total"], 4)
+        self.assertEqual(universal["summary"]["totalUsers"], 2)
+        self.assertEqual(universal["summary"]["activeUsers"], 2)
+
+        filtered = build_universal_overview({"range": "all", "type": "url"})
+        self.assertEqual(filtered["summary"]["total"], 2)
+        self.assertEqual(filtered["summary"]["scam"], 1)
+        self.assertEqual(filtered["summary"]["safe"], 1)
+
+    def test_universal_dashboard_requires_admin(self):
+        client = self.app.test_client()
+        with client.session_transaction() as session:
+            session["_user_id"] = str(self.user.id)
+            session["_fresh"] = True
+
+        self.assertEqual(client.get("/admin/analytics").status_code, 403)
+        self.assertEqual(client.get("/api/admin/analytics/overview").status_code, 403)
+
+    def test_admin_can_access_universal_dashboard_and_api(self):
+        self.user.is_admin = True
+        db.session.commit()
+        client = self.app.test_client()
+        with client.session_transaction() as session:
+            session["_user_id"] = str(self.user.id)
+            session["_fresh"] = True
+
+        self.assertEqual(client.get("/admin/analytics").status_code, 200)
+        response = client.get("/api/admin/analytics/overview?range=all")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.get_json()["summary"]["total"], 4)
 
 
 if __name__ == "__main__":
