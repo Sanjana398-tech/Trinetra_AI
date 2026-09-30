@@ -1,5 +1,6 @@
 import unittest
 from urllib.parse import parse_qs, urlsplit
+from unittest.mock import patch
 
 from backend import create_app
 from backend.db_models import ScanHistory, SecureChatAuthorizationCode, User
@@ -154,6 +155,43 @@ class SecureChatIntegrationTests(unittest.TestCase):
             source="secure-chat",
         ).all()
         self.assertEqual({record.scan_type for record in records}, {"message", "url", "upi"})
+
+    def test_message_detection_returns_displayable_warning_state(self):
+        _, token = self._enable_and_exchange()
+        headers = {
+            **self._service_headers(),
+            "Authorization": f"Bearer {token}",
+        }
+
+        for verdict, should_warn in (("scam", True), ("suspicious", True), ("safe", False)):
+            with self.subTest(verdict=verdict):
+                with patch(
+                    "backend.routes.secure_chat.classify_message",
+                    return_value={
+                        "engine": "DistilBERT",
+                        "verdict": verdict,
+                        "confidence": 91.0,
+                        "risk": 80.0 if should_warn else 2.0,
+                        "reasons": ["Test reason"],
+                        "tips": ["Test action"],
+                    },
+                ):
+                    response = self.client.post(
+                        "/api/secure-chat/v1/detect",
+                        json={"type": "message", "text": "Test message"},
+                        headers=headers,
+                    )
+
+                self.assertEqual(response.status_code, 200, response.get_json())
+                result = response.get_json()
+                self.assertEqual(result["should_warn"], should_warn)
+                self.assertEqual(result["localized"]["should_warn"], should_warn)
+                if should_warn:
+                    self.assertTrue(result["alert"])
+                    self.assertEqual(result["localized"]["alert"], result["alert"])
+                else:
+                    self.assertIsNone(result["alert"])
+                    self.assertIsNone(result["localized"]["alert"])
 
 
 if __name__ == "__main__":

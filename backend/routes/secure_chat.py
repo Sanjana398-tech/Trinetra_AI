@@ -80,6 +80,19 @@ def _verify_user_token():
 def _save_scan(user, scan_type, content, result, language):
     reasons = [translate(reason, language) for reason in result.get("reasons", [])]
     tips = [translate(tip, language) for tip in result.get("tips", [])]
+    verdict = result["verdict"].lower()
+    should_warn = verdict in {"scam", "suspicious"}
+    alert = None
+    if verdict == "scam":
+        alert = translate(
+            "Warning: this message was identified as a potential scam. Do not reply, click links, or share sensitive information.",
+            language,
+        )
+    elif verdict == "suspicious":
+        alert = translate(
+            "Caution: this message looks suspicious. Verify the sender independently before responding or taking action.",
+            language,
+        )
     record = ScanHistory(
         user_id=user.id,
         source="secure-chat",
@@ -111,6 +124,8 @@ def _save_scan(user, scan_type, content, result, language):
     }
     return {
         "verdict": result["verdict"].title(),
+        "should_warn": should_warn,
+        "alert": alert,
         "confidence": round(float(result["confidence"]), 2),
         "risk_score": round(float(result["risk"]), 2),
         "explanation": " | ".join(reasons),
@@ -120,6 +135,8 @@ def _save_scan(user, scan_type, content, result, language):
         "language": language,
         "localized": {
             "verdict": verdict_label,
+            "alert": alert,
+            "should_warn": should_warn,
             "reasons": reasons,
             "tips": tips,
             "language": language,
