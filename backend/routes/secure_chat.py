@@ -122,8 +122,11 @@ def _save_scan(user, scan_type, content, result, language):
         "url": "URL/XGBoost",
         "upi_gnn_xgboost": "UPI GNN + XGBoost",
     }
-    return {
+    response = {
+        "success": True,
         "verdict": result["verdict"].title(),
+        "prediction": verdict.upper(),
+        "prediction_label": verdict_label,
         "should_warn": should_warn,
         "alert": alert,
         "confidence": round(float(result["confidence"]), 2),
@@ -143,6 +146,11 @@ def _save_scan(user, scan_type, content, result, language):
         },
         "scan_id": record.id if record else None,
     }
+    if scan_type == "message":
+        scam_probability = round(float(result["risk"]), 2)
+        response["scam_probability"] = scam_probability
+        response["safe_probability"] = round(100 - scam_probability, 2)
+    return response
 
 
 @secure_chat_bp.route("/integrations/secure-chat/authorize", methods=["GET", "POST"])

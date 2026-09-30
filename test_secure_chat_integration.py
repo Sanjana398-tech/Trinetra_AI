@@ -184,11 +184,15 @@ class SecureChatIntegrationTests(unittest.TestCase):
 
                 self.assertEqual(response.status_code, 200, response.get_json())
                 result = response.get_json()
+                self.assertTrue(result["success"])
+                self.assertEqual(result["prediction"], verdict.upper())
                 self.assertEqual(result["should_warn"], should_warn)
                 self.assertEqual(result["localized"]["should_warn"], should_warn)
                 if should_warn:
                     self.assertTrue(result["alert"])
                     self.assertEqual(result["localized"]["alert"], result["alert"])
+                    alert_prefix = "warning" if verdict == "scam" else "caution"
+                    self.assertTrue(result["alert"].lower().startswith(alert_prefix))
                 else:
                     self.assertIsNone(result["alert"])
                     self.assertIsNone(result["localized"]["alert"])

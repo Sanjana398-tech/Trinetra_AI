@@ -373,10 +373,11 @@ It then calls `POST /api/secure-chat/v1/detect` with the same service header,
 - `{ "type": "url", "url": "https://...", "language": "en" }`
 - `{ "type": "upi", "upi_id": "name@bank", "amount": 100, "note": "...", "language": "en" }`
 
-Successful responses contain `verdict`, `should_warn`, `alert`, `confidence`,
+Successful responses contain `success`, `verdict`, `prediction`, `should_warn`, `alert`, `confidence`,
 `risk_score`, `explanation`, `reasons`, `tips`, `detection_type`, `language`, localized fields,
-and a Trinetra `scan_id`. Secure Chat should show `alert` in the conversation
-when `should_warn` is true; it is null for safe results. The account token is signed, short-lived, tied to the
+and a Trinetra `scan_id`. Message responses also include `safe_probability` and
+`scam_probability` for clients using the legacy message-result fields. Secure Chat should show
+`alert` in the conversation when `should_warn` is true; it is null for safe results. The account token is signed, short-lived, tied to the
 consenting Trinetra user, and checked against the current opt-in status on every
 detection. Users can revoke access from the same consent page.
 
