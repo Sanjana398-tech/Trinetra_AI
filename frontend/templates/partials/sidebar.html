@@ -23,6 +23,9 @@
     <a href="{{ url_for('analytics.analytics_page') }}" class="nav-link {{ 'active' if active_page == 'analytics' }}">
       {{ icon('bar-chart') }}<span class="nav-label">Advanced Analytics</span>
     </a>
+    <a href="{{ url_for('universal_dashboard.universal_security_page') }}" class="nav-link {{ 'active' if active_page == 'universal-security' }}">
+      {{ icon('radar') }}<span class="nav-label">Universal Security Dashboard</span>
+    </a>
     {% if current_user.is_authenticated and current_user.is_admin %}
     <a href="{{ url_for('analytics.universal_analytics_page') }}" class="nav-link {{ 'active' if active_page == 'admin-analytics' }}">
       {{ icon('users') }}<span class="nav-label">Universal Analytics</span>

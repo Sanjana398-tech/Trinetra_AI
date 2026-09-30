@@ -139,10 +139,12 @@ def create_app(config_name: str = None) -> Flask:
     from backend.routes.api import api_bp
     from backend.routes.secure_chat import secure_chat_bp
     from backend.routes.analytics import analytics_bp
+    from backend.routes.universal_dashboard import universal_dashboard_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(dashboard_bp)
     app.register_blueprint(analytics_bp)
+    app.register_blueprint(universal_dashboard_bp)
     app.register_blueprint(history_bp)
     app.register_blueprint(message_scan_bp)
     app.register_blueprint(url_scan_bp)
