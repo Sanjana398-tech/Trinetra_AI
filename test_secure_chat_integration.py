@@ -144,10 +144,19 @@ class SecureChatIntegrationTests(unittest.TestCase):
                 self.assertEqual(response.status_code, 200, response.get_json())
                 result = response.get_json()
                 self.assertIn(result["verdict"], {"Safe", "Suspicious", "Scam"})
+                self.assertIn(result["classification"], {"SAFE", "SUSPICIOUS", "SCAM"})
+                self.assertEqual(result["type"], {"message": "text"}.get(payload["type"], payload["type"]))
+                self.assertEqual(result["language"], "en")
+                self.assertTrue(result["scan_id"])
                 self.assertGreaterEqual(result["confidence"], 0)
                 self.assertLessEqual(result["confidence"], 100)
                 self.assertGreaterEqual(result["risk_score"], 0)
                 self.assertLessEqual(result["risk_score"], 100)
+                record = db.session.get(ScanHistory, result["scan_id"])
+                self.assertIsNotNone(record)
+                self.assertEqual(record.verdict, result["classification"].lower())
+                self.assertEqual(record.source, "secure-chat")
+                self.assertEqual(record.user_id, self.user.id)
                 self.assertIn(
                     result["detection_type"],
                     {"SMS/DistilBERT", "URL/XGBoost", "UPI GNN + XGBoost"},
@@ -234,11 +243,13 @@ class SecureChatIntegrationTests(unittest.TestCase):
         self.assertEqual(result["detection_type"], "SMS/DistilBERT")
         self.assertEqual(result["analysis_type"], "image-text")
         self.assertTrue(result["should_warn"])
+        self.assertEqual(result["classification"], "SCAM")
+        self.assertEqual(result["type"], "image")
+        self.assertTrue(result["scan_id"])
         self.assertIn("image", result["alert"].lower())
-        self.assertEqual(
-            ScanHistory.query.filter_by(user_id=self.user.id, scan_type="screenshot").count(),
-            1,
-        )
+        record = db.session.get(ScanHistory, result["scan_id"])
+        self.assertEqual(record.verdict, "scam")
+        self.assertEqual(record.scan_type, "screenshot")
 
     def test_voice_detection_transcribes_and_returns_voice_alert(self):
         _, token = self._enable_and_exchange()
@@ -273,11 +284,13 @@ class SecureChatIntegrationTests(unittest.TestCase):
         self.assertEqual(result["analysis_type"], "voice-transcription")
         self.assertEqual(result["transcription"], "Please transfer money to secure your account")
         self.assertTrue(result["should_warn"])
+        self.assertEqual(result["classification"], "SUSPICIOUS")
+        self.assertEqual(result["type"], "voice")
+        self.assertTrue(result["scan_id"])
         self.assertIn("voice message", result["alert"].lower())
-        self.assertEqual(
-            ScanHistory.query.filter_by(user_id=self.user.id, scan_type="voice").count(),
-            1,
-        )
+        record = db.session.get(ScanHistory, result["scan_id"])
+        self.assertEqual(record.verdict, "suspicious")
+        self.assertEqual(record.scan_type, "voice")
 
     def test_qr_detection_returns_normalized_result_and_saves_history(self):
         _, token = self._enable_and_exchange()
@@ -319,10 +332,9 @@ class SecureChatIntegrationTests(unittest.TestCase):
         self.assertGreaterEqual(result["risk_score"], 0)
         self.assertTrue(result["scan_id"])
         self.assertEqual(result["analysis_type"], "qr-url")
-        self.assertEqual(
-            ScanHistory.query.filter_by(user_id=self.user.id, scan_type="qr").count(),
-            1,
-        )
+        record = db.session.get(ScanHistory, result["scan_id"])
+        self.assertEqual(record.verdict, "scam")
+        self.assertEqual(record.scan_type, "qr")
 
     def test_scan_persistence_failure_returns_server_error(self):
         _, token = self._enable_and_exchange()
@@ -433,9 +445,16 @@ class SecureChatIntegrationTests(unittest.TestCase):
 
                 self.assertEqual(response.status_code, 200, response.get_json())
                 result = response.get_json()
+                self.assertTrue(result["success"])
+                self.assertEqual(result["classification"], "SUSPICIOUS")
+                self.assertEqual(result["type"], payload["type"])
+                self.assertTrue(result["scan_id"])
                 self.assertTrue(result["should_warn"])
                 self.assertIn(label, result["alert"].lower())
                 self.assertEqual(result["localized"]["alert"], result["alert"])
+                record = db.session.get(ScanHistory, result["scan_id"])
+                self.assertEqual(record.verdict, "suspicious")
+                self.assertEqual(record.scan_type, payload["type"])
 
 
 if __name__ == "__main__":
