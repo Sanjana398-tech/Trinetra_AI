@@ -87,16 +87,40 @@ def create_app(config_name: str = None) -> Flask:
     # and secure-cookie checks behave correctly behind HTTPS termination.
     app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
 
-    # Browser access is limited to the explicitly configured Secure Chat origin.
-    secure_chat_origin = app.config.get("SECURE_CHAT_ORIGIN")
-    if secure_chat_origin:
-        CORS(app, resources={
-            r"/api/*": {
-                "origins": [secure_chat_origin],
-                "methods": ["POST", "OPTIONS"],
-                "allow_headers": ["Content-Type", "X-Secure-Chat-Key", "Authorization"],
-            }
-        })
+    # ── CORS ─────────────────────────────────────────────────────────────
+    # Allow the Secure Chat frontend/backend to call every /api/* route
+    # (both the unauthenticated api_bp endpoints and the authenticated
+    # /api/secure-chat/v1/* endpoints in secure_chat_bp).
+    #
+    # SECURE_CHAT_ORIGIN should be the *exact* browser-facing origin of
+    # Secure Chat including scheme, e.g.:
+    #   https://secure-chat-two-green.vercel.app
+    #
+    # If the env var is absent we fall back to the known production origin
+    # so that a missing config does not silently break CORS preflight.
+    _DEFAULT_SECURE_CHAT_ORIGIN = "https://secure-chat-two-green.vercel.app"
+    secure_chat_origin = (
+        app.config.get("SECURE_CHAT_ORIGIN") or _DEFAULT_SECURE_CHAT_ORIGIN
+    ).rstrip("/")
+    if not app.config.get("SECURE_CHAT_ORIGIN"):
+        app.logger.warning(
+            "SECURE_CHAT_ORIGIN is not set — falling back to default origin '%s'. "
+            "Set SECURE_CHAT_ORIGIN in your environment to suppress this warning.",
+            _DEFAULT_SECURE_CHAT_ORIGIN,
+        )
+
+    CORS(app, resources={
+        r"/api/*": {
+            "origins": [secure_chat_origin],
+            "methods": ["GET", "POST", "OPTIONS"],
+            "allow_headers": [
+                "Content-Type",
+                "X-Secure-Chat-Key",
+                "Authorization",
+            ],
+            "supports_credentials": False,
+        }
+    })
 
     # ---- Logging ---------------------------------------------------------
     logging.basicConfig(
@@ -230,6 +254,18 @@ def create_app(config_name: str = None) -> Flask:
             db_ok = False
         status = "ok" if db_ok else "degraded"
         return jsonify(status=status, database=db_ok), (200 if db_ok else 503)
+
+    @app.route("/health")
+    def health():
+        """
+        Lightweight health endpoint — does NOT load ML models.
+
+        Returns HTTP 200 immediately as long as the process is alive.
+        Used by Secure Chat (and any uptime monitor) to distinguish
+        "Trinetra is down" from "Trinetra returned a detection result".
+        A separate database ping lives at /healthz for deeper checks.
+        """
+        return jsonify(status="ok", service="trinetra-ai"), 200
 
     # ---- Global error handlers --------------------------------------------
     @app.errorhandler(404)

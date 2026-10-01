@@ -18,4 +18,10 @@ COPY . .
 
 ENV PYTHONUNBUFFERED=1
 
-CMD gunicorn -w 1 --timeout 120 -b 0.0.0.0:$PORT "app:app"
+# Whisper model load + transcription can take up to ~90 s on a CPU-only
+# instance.  The worker timeout must be long enough that gunicorn does not
+# SIGKILL the worker before Flask sends its response.
+# Render's nginx proxy has its own ~30 s idle timeout; the threading fix in
+# voice_transcribe.py ensures Flask responds within 85 s regardless, so
+# gunicorn only needs to cover the DistilBERT + Whisper startup time.
+CMD gunicorn -w 1 --timeout 300 -b 0.0.0.0:$PORT "app:app"

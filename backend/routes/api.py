@@ -566,8 +566,22 @@ def analyze_screenshot():
             temp_path,
             current_app.config.get("TESSERACT_CMD", ""),
         ).strip()
+    except ValueError as exc:
+        # Not a valid image file (PIL could not decode it)
+        logger.warning("Image OCR rejected invalid file: %s", exc)
+        _remove_temp(temp_path)
+        return jsonify({"success": False, "error": "The uploaded file is not a valid image"}), 400
+    except RuntimeError as exc:
+        # Tesseract binary not found on this server
+        logger.error("Tesseract unavailable: %s", exc)
+        _remove_temp(temp_path)
+        return jsonify({"success": False, "error": "OCR is currently unavailable on the server"}), 503
+    except OSError as exc:
+        logger.exception("OCR I/O error: %s", exc)
+        _remove_temp(temp_path)
+        return jsonify({"success": False, "error": "OCR processing failed"}), 503
     except Exception:
-        logger.exception("OCR failed")
+        logger.exception("OCR failed with unexpected error")
         _remove_temp(temp_path)
         return jsonify({"success": False, "error": "OCR is currently unavailable on the server"}), 503
     finally:

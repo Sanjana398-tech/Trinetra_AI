@@ -99,6 +99,9 @@ def _classify_image(path, language):
             result["content"] = decoded[:_MAX_MESSAGE_CHARS]
         return decoded, result
 
+    # extract_text raises ValueError (bad image), RuntimeError (no Tesseract),
+    # or OSError (I/O error).  Let callers catch these so the worker is never
+    # killed by an unhandled exception, which would produce an empty 502/503.
     raw_text = extract_text(path, current_app.config.get("TESSERACT_CMD", "")).strip()
     if len(raw_text) < 15:
         return raw_text or "[image with no readable text]", {
@@ -459,6 +462,14 @@ def detect_for_secure_chat():
                 return jsonify(error=upload_error), 400
             try:
                 content, result = _classify_image(path, language)
+            except ValueError as exc:
+                # Not a valid image (PIL could not decode the file bytes)
+                logger.warning("Secure Chat image rejected: %s", exc)
+                return jsonify(error="The uploaded file is not a valid image"), 400
+            except RuntimeError as exc:
+                # Tesseract not installed on this server
+                logger.error("Secure Chat OCR unavailable: %s", exc)
+                return jsonify(error="Image analysis is currently unavailable on the server"), 503
             except Exception:
                 logger.exception("Secure Chat image detection failed")
                 return jsonify(error="Image analysis is currently unavailable"), 503
