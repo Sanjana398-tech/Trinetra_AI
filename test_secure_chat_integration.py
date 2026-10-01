@@ -1,4 +1,5 @@
 import unittest
+from io import BytesIO
 from urllib.parse import parse_qs, urlsplit
 from unittest.mock import patch
 
@@ -115,7 +116,10 @@ class SecureChatIntegrationTests(unittest.TestCase):
             },
         )
         self.assertEqual(response.status_code, 400)
-        self.assertEqual(response.get_json()["error"], "type must be message, url, or upi")
+        self.assertEqual(
+            response.get_json()["error"],
+            "type must be message, url, upi, image, or voice",
+        )
 
     def test_real_detectors_return_normalized_results_and_account_attribution(self):
         _, token = self._enable_and_exchange()
@@ -196,6 +200,122 @@ class SecureChatIntegrationTests(unittest.TestCase):
                 else:
                     self.assertIsNone(result["alert"])
                     self.assertIsNone(result["localized"]["alert"])
+
+    def test_image_detection_runs_ocr_and_returns_image_alert(self):
+        _, token = self._enable_and_exchange()
+        headers = {
+            **self._service_headers(),
+            "Authorization": f"Bearer {token}",
+        }
+        classification = {
+            "engine": "DistilBERT",
+            "verdict": "scam",
+            "confidence": 96.0,
+            "risk": 94.0,
+            "reasons": ["Test image reason"],
+            "tips": ["Test image action"],
+        }
+        with patch("backend.routes.secure_chat.decode_qr", return_value=(None, None)), patch(
+            "backend.routes.secure_chat.extract_text",
+            return_value="Urgent account warning: verify your account at once.",
+        ), patch("backend.routes.secure_chat.parse_fields", return_value={}), patch(
+            "backend.routes.secure_chat.find_url_in_text", return_value=None
+        ), patch("backend.routes.secure_chat.classify_message", return_value=classification):
+            response = self.client.post(
+                "/api/secure-chat/v1/detect",
+                data={
+                    "type": "image",
+                    "image": (BytesIO(b"image bytes"), "message.png"),
+                },
+                headers=headers,
+            )
+
+        self.assertEqual(response.status_code, 200, response.get_json())
+        result = response.get_json()
+        self.assertEqual(result["detection_type"], "SMS/DistilBERT")
+        self.assertEqual(result["analysis_type"], "image-text")
+        self.assertTrue(result["should_warn"])
+        self.assertIn("image", result["alert"].lower())
+        self.assertEqual(
+            ScanHistory.query.filter_by(user_id=self.user.id, scan_type="screenshot").count(),
+            1,
+        )
+
+    def test_voice_detection_transcribes_and_returns_voice_alert(self):
+        _, token = self._enable_and_exchange()
+        headers = {
+            **self._service_headers(),
+            "Authorization": f"Bearer {token}",
+        }
+        classification = {
+            "engine": "DistilBERT",
+            "verdict": "suspicious",
+            "confidence": 88.0,
+            "risk": 61.0,
+            "reasons": ["Test voice reason"],
+            "tips": ["Test voice action"],
+        }
+        with patch(
+            "backend.routes.secure_chat.transcribe_audio",
+            return_value=("Please transfer money to secure your account", None),
+        ), patch("backend.routes.secure_chat.classify_message", return_value=classification):
+            response = self.client.post(
+                "/api/secure-chat/v1/detect",
+                data={
+                    "type": "voice",
+                    "audio": (BytesIO(b"audio bytes"), "voice.wav"),
+                },
+                headers=headers,
+            )
+
+        self.assertEqual(response.status_code, 200, response.get_json())
+        result = response.get_json()
+        self.assertEqual(result["detection_type"], "Whisper + DistilBERT")
+        self.assertEqual(result["analysis_type"], "voice-transcription")
+        self.assertEqual(result["transcription"], "Please transfer money to secure your account")
+        self.assertTrue(result["should_warn"])
+        self.assertIn("voice message", result["alert"].lower())
+        self.assertEqual(
+            ScanHistory.query.filter_by(user_id=self.user.id, scan_type="voice").count(),
+            1,
+        )
+
+    def test_url_and_upi_alerts_name_the_detected_content(self):
+        _, token = self._enable_and_exchange()
+        headers = {
+            **self._service_headers(),
+            "Authorization": f"Bearer {token}",
+        }
+        suspicious = {
+            "engine": "test-detector",
+            "verdict": "suspicious",
+            "confidence": 84.0,
+            "risk": 57.0,
+            "reasons": ["Test reason"],
+            "tips": ["Test action"],
+        }
+        cases = (
+            ({"type": "url", "url": "https://example.com"}, "classify_url", "url"),
+            (
+                {"type": "upi", "upi_id": "alice@okaxis", "amount": 25},
+                "classify_upi",
+                "upi payment request",
+            ),
+        )
+        for payload, classifier, label in cases:
+            with self.subTest(detection_type=payload["type"]):
+                with patch(f"backend.routes.secure_chat.{classifier}", return_value=suspicious):
+                    response = self.client.post(
+                        "/api/secure-chat/v1/detect",
+                        json=payload,
+                        headers=headers,
+                    )
+
+                self.assertEqual(response.status_code, 200, response.get_json())
+                result = response.get_json()
+                self.assertTrue(result["should_warn"])
+                self.assertIn(label, result["alert"].lower())
+                self.assertEqual(result["localized"]["alert"], result["alert"])
 
 
 if __name__ == "__main__":

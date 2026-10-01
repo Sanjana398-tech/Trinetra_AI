@@ -366,16 +366,28 @@ verify that state before exchanging the code.
 
 The Secure Chat backend exchanges the code with `POST /api/secure-chat/v1/token`
 using `X-Secure-Chat-Key: <SECURE_CHAT_API_KEY>` and JSON `{ "code": "..." }`.
-It then calls `POST /api/secure-chat/v1/detect` with the same service header,
-`Authorization: Bearer <access_token>`, and one of these JSON shapes:
+It then calls `POST /api/secure-chat/v1/detect` with the same service header
+and `Authorization: Bearer <access_token>`. Text, URL, and UPI scans use JSON:
 
 - `{ "type": "message", "text": "...", "language": "en" }`
 - `{ "type": "url", "url": "https://...", "language": "en" }`
 - `{ "type": "upi", "upi_id": "name@bank", "amount": 100, "note": "...", "language": "en" }`
 
+Image and voice scans use `multipart/form-data`:
+
+- `type=image`, `image=<PNG/JPG/JPEG/WEBP file>`, and optional `language=en`
+- `type=voice`, `audio=<WAV/MP3/M4A/OGG file>`, and optional `language=en`
+
+Images are checked for QR content first, then analyzed with OCR for payment details,
+URLs, or scam text. Voice uploads are transcribed with Whisper and the transcript is
+analyzed with DistilBERT. The response includes `analysis_type` and extracted
+`content` or `transcription` for media scans.
+
 Successful responses contain `success`, `verdict`, `prediction`, `should_warn`, `alert`, `confidence`,
 `risk_score`, `explanation`, `reasons`, `tips`, `detection_type`, `language`, localized fields,
-and a Trinetra `scan_id`. Message responses also include `safe_probability` and
+and a Trinetra `scan_id`. Scam and suspicious alerts name the analyzed content type;
+clients should display `alert` in the conversation whenever `should_warn` is true.
+Message responses also include `safe_probability` and
 `scam_probability` for clients using the legacy message-result fields. Secure Chat should show
 `alert` in the conversation when `should_warn` is true; it is null for safe results. The account token is signed, short-lived, tied to the
 consenting Trinetra user, and checked against the current opt-in status on every
