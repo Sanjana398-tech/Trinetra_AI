@@ -17,9 +17,9 @@ Production note (Render / gunicorn):
     connection and returns a 502 to the client.
 
     To avoid this we offload the work to a ThreadPoolExecutor with a hard
-    deadline of TRANSCRIBE_TIMEOUT_SECONDS (default 90 s).  If the
+    deadline of TRANSCRIBE_TIMEOUT_SECONDS (maximum 25 s).  If the
     deadline expires we return a friendly error so the route can respond
-    quickly with HTTP 503 instead of silently hanging.
+    before the proxy drops the connection.
 """
 
 import logging
@@ -37,10 +37,12 @@ _model_cache: dict = {}
 # the single thread so concurrent requests queue rather than corrupt state.
 _executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="whisper")
 
-# Hard deadline passed to the executor.  Render's nginx proxy times out at
-# ~30 s; we set the app-level deadline lower so Flask can still send a clean
-# JSON error before the proxy cuts the connection.
-_TRANSCRIBE_TIMEOUT_SECONDS = int(os.environ.get("WHISPER_TIMEOUT_SECONDS", "85"))
+# Leave time for Flask to serialize its JSON response before the platform's
+# approximately 30-second proxy timeout, even if the environment is mis-set.
+_TRANSCRIBE_TIMEOUT_SECONDS = min(
+    max(int(os.environ.get("WHISPER_TIMEOUT_SECONDS", "25")), 1),
+    25,
+)
 
 
 def _load_model():
@@ -128,9 +130,7 @@ def transcribe_audio(file_path: str):
         error      - human-readable reason when transcript is None, else None
 
     Uses a ThreadPoolExecutor so that the gunicorn request thread is never
-    blocked longer than WHISPER_TIMEOUT_SECONDS (default 85 s).  This
-    prevents Render's 30 s proxy timeout from returning an empty 502 to
-    the client before Flask has a chance to send a proper JSON error.
+    blocked longer than 25 seconds, below the hosting proxy timeout.
     """
     # Resolve config while we still have an app context (request thread).
     try:

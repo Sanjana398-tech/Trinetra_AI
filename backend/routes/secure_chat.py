@@ -560,7 +560,12 @@ def detect_for_secure_chat():
             finally:
                 _remove_upload(path)
             if transcribe_error or not transcript:
-                return jsonify(error=transcribe_error or "No speech could be detected"), 422
+                error = transcribe_error or "No speech could be detected"
+                server_failure = any(
+                    marker in error.lower()
+                    for marker in ("timed out", "unavailable", "not installed", "couldn't load")
+                )
+                return jsonify(success=False, error=error), 503 if server_failure else 422
             if len(transcript) > _MAX_MESSAGE_CHARS:
                 transcript = transcript[:_MAX_MESSAGE_CHARS]
             result = classify_message(to_english(transcript, language))

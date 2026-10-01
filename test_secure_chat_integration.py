@@ -131,6 +131,7 @@ class SecureChatIntegrationTests(unittest.TestCase):
         detections = [
             {"type": "message", "text": "Your order has shipped and will arrive tomorrow."},
             {"type": "url", "url": "https://www.google.com"},
+            {"type": "url", "url": "https://sbi-secure-update.tk/login"},
             {"type": "upi", "upi_id": "alice@okaxis", "amount": 100, "note": "invoice"},
         ]
 
@@ -169,6 +170,41 @@ class SecureChatIntegrationTests(unittest.TestCase):
             source="secure-chat",
         ).all()
         self.assertEqual({record.scan_type for record in records}, {"message", "url", "upi"})
+
+    def test_upi_rule_indicators_override_false_safe_model_result(self):
+        class AlwaysSafeDetector:
+            def predict(self, _upi_id, _transaction):
+                return {"verdict": "safe", "confidence": 100.0, "risk": 0.0}
+
+        _, token = self._enable_and_exchange()
+        headers = {
+            **self._service_headers(),
+            "Authorization": f"Bearer {token}",
+        }
+        with patch(
+            "backend.utils.classifiers.get_upi_detector",
+            return_value=AlwaysSafeDetector(),
+        ):
+            response = self.client.post(
+                "/api/secure-chat/v1/detect",
+                json={
+                    "type": "upi",
+                    "upi_id": "fraud@badbank",
+                    "amount": 5000,
+                    "note": "urgent refund verification",
+                },
+                headers=headers,
+            )
+
+        self.assertEqual(response.status_code, 200, response.get_json())
+        result = response.get_json()
+        self.assertEqual(result["classification"], "SUSPICIOUS")
+        self.assertGreaterEqual(result["risk_score"], 40.0)
+        self.assertTrue(result["scan_id"])
+        self.assertTrue(any("high-risk keywords" in reason for reason in result["reasons"]))
+        record = db.session.get(ScanHistory, result["scan_id"])
+        self.assertEqual(record.verdict, "suspicious")
+        self.assertEqual(record.scan_type, "upi")
 
     def test_message_detection_returns_displayable_warning_state(self):
         _, token = self._enable_and_exchange()
@@ -291,6 +327,33 @@ class SecureChatIntegrationTests(unittest.TestCase):
         record = db.session.get(ScanHistory, result["scan_id"])
         self.assertEqual(record.verdict, "suspicious")
         self.assertEqual(record.scan_type, "voice")
+
+    def test_voice_transcription_timeout_returns_json_503_without_scan(self):
+        _, token = self._enable_and_exchange()
+        headers = {
+            **self._service_headers(),
+            "Authorization": f"Bearer {token}",
+        }
+        with patch(
+            "backend.routes.secure_chat.transcribe_audio",
+            return_value=(None, "Voice transcription timed out"),
+        ):
+            response = self.client.post(
+                "/api/secure-chat/v1/detect",
+                data={
+                    "type": "voice",
+                    "audio": (BytesIO(b"audio bytes"), "voice.wav"),
+                },
+                headers=headers,
+            )
+
+        self.assertEqual(response.status_code, 503, response.get_json())
+        self.assertFalse(response.get_json()["success"])
+        self.assertIn("timed out", response.get_json()["error"])
+        self.assertEqual(
+            ScanHistory.query.filter_by(user_id=self.user.id, scan_type="voice").count(),
+            0,
+        )
 
     def test_qr_detection_returns_normalized_result_and_saves_history(self):
         _, token = self._enable_and_exchange()

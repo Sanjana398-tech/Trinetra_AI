@@ -202,6 +202,23 @@ class AnalysisApiEndToEndTests(unittest.TestCase):
                     )
                     self._clear_scans()
 
+    def test_scam_payment_image_is_classified_and_saved(self):
+        with patch(
+            "backend.utils.detection.decode_qr",
+            return_value=(None, "No QR code found"),
+        ), patch(
+            "backend.utils.detection.extract_text",
+            return_value="SAMPLE TEST TRANSACTION payment received",
+        ):
+            response = self.client.post(
+                "/api/analyze-screenshot",
+                data={"image": (BytesIO(b"mocked image bytes"), "receipt.png")},
+            )
+
+        body = self._assert_detection(response, "screenshot", "scam")
+        self.assertEqual(body["type"], "image")
+        self.assertEqual(body["analysis_type"], "payment-screenshot")
+
     def test_screenshot_ocr_is_bounded_and_downscales_large_images(self):
         from backend.utils.screenshot_analyze import (
             _MAX_OCR_DIMENSION,
@@ -245,6 +262,32 @@ class AnalysisApiEndToEndTests(unittest.TestCase):
 
         body = self._assert_detection(response, "voice", "scam")
         self.assertEqual(body["transcription"], "Transfer money now to prevent account closure")
+
+    def test_real_voice_transcript_is_classified_and_saved(self):
+        cases = (
+            (
+                "Your order has shipped and will arrive tomorrow.",
+                "safe",
+            ),
+            (
+                "Your account is blocked. Send your OTP now to verify immediately.",
+                "scam",
+            ),
+        )
+        with patch(
+            "backend.utils.voice_transcribe.transcribe_audio",
+            side_effect=[(transcript, None) for transcript, _verdict in cases],
+        ):
+            for transcript, verdict in cases:
+                with self.subTest(verdict=verdict):
+                    response = self.client.post(
+                        "/api/analyze-voice",
+                        data={"audio": (BytesIO(b"mocked wav upload"), "voice.wav")},
+                    )
+
+                    body = self._assert_detection(response, "voice", verdict)
+                    self.assertEqual(body["transcription"], transcript)
+                    self._clear_scans()
 
     def test_error_cases(self):
         cases = (

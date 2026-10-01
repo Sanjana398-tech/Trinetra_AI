@@ -187,9 +187,13 @@ def _external_user_id():
 def _error_status(error_msg: str) -> int:
     """Map a detection error message to the appropriate HTTP status code."""
     msg = (error_msg or "").lower()
-    if "unavailable" in msg or "not installed" in msg or "timed out" in msg:
+    if any(marker in msg for marker in (
+        "unavailable", "not installed", "timed out", "couldn't load",
+    )):
         return 503
-    if "no speech" in msg or "no qr code" in msg or "not a valid" in msg:
+    if any(marker in msg for marker in (
+        "no speech", "no qr code", "not a valid", "couldn't transcribe",
+    )):
         return 422
     if "invalid" in msg or "required" in msg or "unsupported" in msg or "too long" in msg:
         return 400
