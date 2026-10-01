@@ -66,11 +66,17 @@
   grid-template-columns: repeat(6, minmax(0, 1fr));
 }
 
+.analytics-stat-grid-universal {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
 @media (max-width: 1280px) {
-  .analytics-stat-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .analytics-stat-grid,
+  .analytics-stat-grid-universal { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 @media (max-width: 720px) {
-  .analytics-stat-grid { grid-template-columns: 1fr 1fr; }
+  .analytics-stat-grid,
+  .analytics-stat-grid-universal { grid-template-columns: 1fr 1fr; }
 }
 
 .analytics-stat-text {

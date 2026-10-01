@@ -61,9 +61,14 @@ def scan_screenshot():
             try:
                 file.save(temp_path)
                 raw_text = extract_text(temp_path, current_app.config.get("TESSERACT_CMD", ""))
+            except ValueError:
+                ocr_error = "Couldn't read that image. Try a clearer screenshot in PNG, JPG, or WEBP format."
+            except RuntimeError:
+                ocr_error = ("Tesseract OCR isn't installed or isn't on PATH on this machine. "
+                             "Install it (see README) and try again.")
             except Exception as exc:  # noqa: BLE001 - never crash on a bad upload / missing tesseract
                 current_app.logger.exception("OCR extraction failed")
-                if "tesseract is not installed" in str(exc).lower() or isinstance(exc, FileNotFoundError):
+                if "tesseract is not installed" in str(exc).lower() or isinstance(exc, (FileNotFoundError, OSError)):
                     ocr_error = ("Tesseract OCR isn't installed or isn't on PATH on this machine. "
                                  "Install it (see README) and try again.")
                 else:

@@ -4,6 +4,7 @@ import hashlib
 import re
 from datetime import datetime
 from urllib.parse import parse_qs, urlparse
+
 import torch
 import numpy as np
 import xgboost as xgb
@@ -36,6 +37,53 @@ class UPIDetector:
             if torch.cuda.is_available()
             else "cpu"
         )
+
+        # -----------------------------
+        # Download GNN model if missing
+        # -----------------------------
+
+        self.gnn_path = os.path.join(
+            self.model_dir,
+            "upi_gnn.pth"
+        )
+
+        if not os.path.exists(self.gnn_path):
+
+            print(
+                "UPI GNN model not found locally. "
+                "Downloading from Hugging Face..."
+            )
+
+            try:
+
+                from huggingface_hub import hf_hub_download
+
+                os.makedirs(
+                    self.model_dir,
+                    exist_ok=True
+                )
+
+                hf_hub_download(
+                    repo_id=os.getenv(
+                        "UPI_MODEL_HF_REPO_ID",
+                        "S45-s/trinetra-upi-model"
+                    ),
+                    filename="upi_gnn.pth",
+                    repo_type="model",
+                    token=os.getenv("HF_TOKEN"),
+                    local_dir=self.model_dir
+                )
+
+                print(
+                    "UPI GNN model downloaded successfully."
+                )
+
+            except Exception as e:
+
+                print(
+                    "Could not download UPI GNN model:",
+                    e
+                )
 
         # -----------------------------
         # Load model information
@@ -94,13 +142,8 @@ class UPIDetector:
         # Load GNN weights
         # -----------------------------
 
-        gnn_path = os.path.join(
-            self.model_dir,
-            "upi_gnn.pth"
-        )
-
         checkpoint = torch.load(
-            gnn_path,
+            self.gnn_path,
             map_location=self.device
         )
 
@@ -149,102 +192,297 @@ class UPIDetector:
         print("Device:", self.device)
 
         if torch.cuda.is_available():
-            print("GPU:", torch.cuda.get_device_name(0))
+            print(
+                "GPU:",
+                torch.cuda.get_device_name(0)
+            )
 
-        print("GNN features:", self.model_info["gnn_input_features"])
-        print("GNN embedding:", self.model_info["gnn_embedding_features"])
-        print("XGBoost features:", self.model_info["total_xgboost_features"])
-        print("Threshold:", self.threshold)
+        print(
+            "GNN features:",
+            self.model_info["gnn_input_features"]
+        )
+
+        print(
+            "GNN embedding:",
+            self.model_info["gnn_embedding_features"]
+        )
+
+        print(
+            "XGBoost features:",
+            self.model_info["total_xgboost_features"]
+        )
+
+        print(
+            "Threshold:",
+            self.threshold
+        )
+
         print("================================")
 
     def _node_id(self, prefix, value):
         """Map an external VPA component to a stable trained graph node."""
-        candidates = [key for key in self.entity_mapping if key.startswith(prefix)]
-        if not candidates:
-            raise ValueError(f"No {prefix} entities exist in the saved UPI graph")
-        digest = hashlib.sha256(value.encode("utf-8")).digest()
-        return self.entity_mapping[candidates[int.from_bytes(digest[:8], "big") % len(candidates)]]
 
-    def _graph_for_transaction(self, features, upi_id):
+        candidates = [
+            key
+            for key in self.entity_mapping
+            if key.startswith(prefix)
+        ]
+
+        if not candidates:
+
+            raise ValueError(
+                f"No {prefix} entities exist in the saved UPI graph"
+            )
+
+        digest = hashlib.sha256(
+            value.encode("utf-8")
+        ).digest()
+
+        return self.entity_mapping[
+            candidates[
+                int.from_bytes(
+                    digest[:8],
+                    "big"
+                ) % len(candidates)
+            ]
+        ]
+
+    def _graph_for_transaction(
+        self,
+        features,
+        upi_id
+    ):
         """Create the saved graph's 2400-node shape for one VPA transaction."""
-        node_count = int(self.config["num_graph_nodes"])
-        source_id = self._node_id("USR", upi_id.split("@", 1)[0])
-        destination_id = self._node_id("MRC", upi_id.split("@", 1)[1])
+
+        node_count = int(
+            self.config["num_graph_nodes"]
+        )
+
+        source_id = self._node_id(
+            "USR",
+            upi_id.split("@", 1)[0]
+        )
+
+        destination_id = self._node_id(
+            "MRC",
+            upi_id.split("@", 1)[1]
+        )
 
         node_features = torch.zeros(
-            (node_count, len(GNN_FEATURE_COLUMNS)), dtype=torch.float32, device=self.device
+            (
+                node_count,
+                len(GNN_FEATURE_COLUMNS)
+            ),
+            dtype=torch.float32,
+            device=self.device
         )
-        node_features[source_id] = torch.from_numpy(features).to(self.device)
-        node_features[destination_id] = torch.from_numpy(features).to(self.device)
-        edge_index = torch.tensor(
-            [[source_id], [destination_id]], dtype=torch.long, device=self.device
-        )
-        edge_attr = torch.from_numpy(features).reshape(1, -1).to(self.device)
-        return Data(x=node_features, edge_index=edge_index, edge_attr=edge_attr)
 
-    def predict(self, upi_id, transaction):
+        node_features[source_id] = (
+            torch.from_numpy(features)
+            .to(self.device)
+        )
+
+        node_features[destination_id] = (
+            torch.from_numpy(features)
+            .to(self.device)
+        )
+
+        edge_index = torch.tensor(
+            [
+                [source_id],
+                [destination_id]
+            ],
+            dtype=torch.long,
+            device=self.device
+        )
+
+        edge_attr = (
+            torch.from_numpy(features)
+            .reshape(1, -1)
+            .to(self.device)
+        )
+
+        return Data(
+            x=node_features,
+            edge_index=edge_index,
+            edge_attr=edge_attr
+        )
+
+    def predict(
+        self,
+        upi_id,
+        transaction
+    ):
         """Run the saved GNN + XGBoost pipeline for one UPI transaction."""
-        features = prepare_gnn_features(transaction)
-        graph = self._graph_for_transaction(features, upi_id)
+
+        features = prepare_gnn_features(
+            transaction
+        )
+
+        graph = self._graph_for_transaction(
+            features,
+            upi_id
+        )
 
         with torch.no_grad():
+
             _logits, embedding = self.gnn(
-                graph.x, graph.edge_index, graph.edge_attr
+                graph.x,
+                graph.edge_index,
+                graph.edge_attr
             )
 
-        xgb_features = np.concatenate((embedding[0].cpu().numpy(), features)).reshape(1, -1)
-        if xgb_features.shape[1] != int(self.model_info["total_xgboost_features"]):
+        xgb_features = np.concatenate(
+            (
+                embedding[0].cpu().numpy(),
+                features
+            )
+        ).reshape(1, -1)
+
+        if (
+            xgb_features.shape[1]
+            != int(
+                self.model_info[
+                    "total_xgboost_features"
+                ]
+            )
+        ):
+
             raise ValueError(
-                f"UPI model expects {self.model_info['total_xgboost_features']} features, "
-                f"got {xgb_features.shape[1]}"
+                f"UPI model expects "
+                f"{self.model_info['total_xgboost_features']} "
+                f"features, got "
+                f"{xgb_features.shape[1]}"
             )
 
-        probabilities = self.xgb_model.predict_proba(xgb_features)[0]
-        classes = list(self.xgb_model.classes_)
-        fraud_probability = float(probabilities[classes.index(1)])
+        probabilities = (
+            self.xgb_model
+            .predict_proba(xgb_features)[0]
+        )
+
+        classes = list(
+            self.xgb_model.classes_
+        )
+
+        fraud_probability = float(
+            probabilities[
+                classes.index(1)
+            ]
+        )
+
         if fraud_probability >= 0.7:
+
             verdict = "scam"
+
         elif fraud_probability >= self.threshold:
+
             verdict = "suspicious"
+
         else:
+
             verdict = "safe"
 
         return {
             "verdict": verdict,
-            "confidence": round(float(max(probabilities)) * 100, 1),
-            "risk": round(fraud_probability * 100, 1),
-            "fraud_probability": fraud_probability,
+            "confidence": round(
+                float(max(probabilities)) * 100,
+                1
+            ),
+            "risk": round(
+                fraud_probability * 100,
+                1
+            ),
+            "fraud_probability":
+                fraud_probability,
         }
 
 
-def parse_upi_payload(payload, amount=None, note=""):
+def parse_upi_payload(
+    payload,
+    amount=None,
+    note=""
+):
     """Convert a VPA or UPI payment URI into detector inputs."""
-    text = str(payload or "").strip()
+
+    text = str(
+        payload or ""
+    ).strip()
+
     parsed = urlparse(text)
-    if parsed.scheme.lower() == "upi" and parsed.netloc.lower() == "pay":
-        params = parse_qs(parsed.query)
-        upi_id = (params.get("pa") or [""])[0].strip()
+
+    if (
+        parsed.scheme.lower() == "upi"
+        and parsed.netloc.lower() == "pay"
+    ):
+
+        params = parse_qs(
+            parsed.query
+        )
+
+        upi_id = (
+            params.get("pa") or [""]
+        )[0].strip()
+
         if amount in (None, ""):
-            amount = (params.get("am") or [0])[0]
+
+            amount = (
+                params.get("am") or [0]
+            )[0]
+
         if not note:
-            note = (params.get("tn") or [""])[0].strip()
+
+            note = (
+                params.get("tn") or [""]
+            )[0].strip()
+
     else:
+
         upi_id = text
 
     try:
-        amount_text = str(amount or "").strip()
-        amount_text = re.sub(r"(?i)\binr\b", "", amount_text)
-        amount_text = amount_text.replace(",", "").replace("₹", "").strip()
-        amount_value = float(amount_text or 0)
-    except (TypeError, ValueError):
-        raise ValueError("UPI amount must be a valid number") from None
+
+        amount_text = str(
+            amount or ""
+        ).strip()
+
+        amount_text = re.sub(
+            r"(?i)\binr\b",
+            "",
+            amount_text
+        )
+
+        amount_text = (
+            amount_text
+            .replace(",", "")
+            .replace("â‚¹", "")
+            .strip()
+        )
+
+        amount_value = float(
+            amount_text or 0
+        )
+
+    except (
+        TypeError,
+        ValueError
+    ):
+
+        raise ValueError(
+            "UPI amount must be a valid number"
+        ) from None
 
     now = datetime.now()
+
     transaction = {
         "amount": amount_value,
         "hour_of_day": now.hour,
-        "is_weekend": int(now.weekday() >= 5),
-        "is_night_transaction": int(now.hour < 6 or now.hour >= 22),
+        "is_weekend": int(
+            now.weekday() >= 5
+        ),
+        "is_night_transaction": int(
+            now.hour < 6
+            or now.hour >= 22
+        ),
         "time_since_last_txn_min": 0.0,
         "user_avg_monthly_txn": 0.0,
         "user_avg_txn_value": amount_value,
@@ -257,9 +495,19 @@ def parse_upi_payload(payload, amount=None, note=""):
         "recurring_payment_flag": 0,
         "balance_after_transaction": 0.0,
     }
-    return upi_id, amount_value, note, transaction
+
+    return (
+        upi_id,
+        amount_value,
+        note,
+        transaction
+    )
+
+
 if __name__ == "__main__":
 
     detector = UPIDetector()
 
-    print("\n✅ UPI detector loaded successfully!")
+    print(
+        "\nâœ… UPI detector loaded successfully!"
+    )

@@ -13,37 +13,87 @@ consistency checks). That's a reasonable and clearly-documented scope
 for a rule-based module — see README for the distinction.
 """
 
+import logging
 import re
 from datetime import datetime
 
-from PIL import Image, ImageOps
+from PIL import Image, ImageOps, UnidentifiedImageError
 import pytesseract
+
+logger = logging.getLogger(__name__)
 
 
 # =============================================================
 # OCR
 # =============================================================
 
-def _configure_tesseract(tesseract_cmd: str = ""):
+def _configure_tesseract(tesseract_cmd: str = "") -> None:
     if tesseract_cmd:
         pytesseract.pytesseract.tesseract_cmd = tesseract_cmd
+
+
+def _tesseract_available() -> bool:
+    """Return True if the tesseract binary can be found and executed."""
+    try:
+        pytesseract.get_tesseract_version()
+        return True
+    except Exception:  # TesseractNotFoundError, OSError, etc.
+        return False
 
 
 def extract_text(image_path: str, tesseract_cmd: str = "") -> str:
     """
     Run OCR on an image file and return the raw extracted text.
-    Applies light preprocessing (grayscale, upscale, autocontrast)
-    since payment-app screenshots are often small/compressed.
+
+    Raises:
+        RuntimeError  – if tesseract is not installed / not on PATH.
+        ValueError    – if the file is not a valid image.
+        OSError       – on other I/O failures.
+
+    Callers should catch these explicitly so the worker process is
+    never killed by an unhandled exception (which would produce an
+    empty 502/503 from the platform proxy rather than a clean JSON
+    error from Flask).
     """
     _configure_tesseract(tesseract_cmd)
 
-    with Image.open(image_path) as img:
-        img = img.convert("L")  # grayscale
-        img = ImageOps.autocontrast(img)
-        if img.width < 900:
-            scale = 900 / img.width
-            img = img.resize((int(img.width * scale), int(img.height * scale)), Image.LANCZOS)
-        text = pytesseract.image_to_string(img)
+    # Validate the file is a real image before calling Tesseract.
+    # PIL raises UnidentifiedImageError for non-image bytes and
+    # OSError for missing/unreadable files — both propagate cleanly.
+    try:
+        img_obj = Image.open(image_path)
+    except UnidentifiedImageError as exc:
+        raise ValueError(
+            f"The uploaded file is not a valid image ({exc.__class__.__name__})."
+        ) from exc
+
+    # Check that Tesseract is available *before* we do expensive image
+    # pre-processing — fast-fail path avoids blocking the worker.
+    if not _tesseract_available():
+        img_obj.close()
+        raise RuntimeError(
+            "Tesseract OCR is not installed or is not on the system PATH. "
+            "The server administrator needs to install it (see README)."
+        )
+
+    try:
+        with img_obj:
+            img_processed = img_obj.convert("L")  # grayscale
+            img_processed = ImageOps.autocontrast(img_processed)
+            if img_processed.width < 900:
+                scale = 900 / img_processed.width
+                img_processed = img_processed.resize(
+                    (int(img_processed.width * scale), int(img_processed.height * scale)),
+                    Image.LANCZOS,
+                )
+            text = pytesseract.image_to_string(img_processed)
+    except RuntimeError:
+        raise  # re-raise our own RuntimeError from above (should not occur here)
+    except Exception as exc:
+        logger.exception("pytesseract.image_to_string failed for %s", image_path)
+        raise OSError(
+            f"OCR processing failed ({exc.__class__.__name__}): {exc}"
+        ) from exc
 
     return text.strip()
 

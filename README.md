@@ -353,10 +353,54 @@ Each script prints accuracy, a per-class precision/recall report, and a confusio
 any time by re-running the relevant script — the Flask app loads models lazily and picks up new
 files on the next restart.
 
-## API Documentation
+## Secure Chat Integration API
 
-Not applicable yet — Phase 1 ships no JSON API endpoints, only server-rendered pages.
-This section will be filled in as each module adds routes.
+Secure Chat must call Trinetra from its backend, and must check its own stored
+`Trinetra AI Protection` preference before making a request. Never put
+`SECURE_CHAT_API_KEY` or the account token in browser code. Each Trinetra user
+must separately sign in and explicitly consent at
+`/integrations/secure-chat/authorize?state=<Secure-Chat-generated-random-state>`.
+Trinetra redirects to the configured `SECURE_CHAT_REDIRECT_URI` with a short-lived,
+single-use authorization code and the unchanged `state` value. Secure Chat must
+verify that state before exchanging the code.
+
+The Secure Chat backend exchanges the code with `POST /api/secure-chat/v1/token`
+using `X-Secure-Chat-Key: <SECURE_CHAT_API_KEY>` and JSON `{ "code": "..." }`.
+It then calls `POST /api/secure-chat/v1/detect` with the same service header
+and `Authorization: Bearer <access_token>`. Text, URL, and UPI scans use JSON:
+
+- `{ "type": "message", "text": "...", "language": "en" }`
+- `{ "type": "url", "url": "https://...", "language": "en" }`
+- `{ "type": "upi", "upi_id": "name@bank", "amount": 100, "note": "...", "language": "en" }`
+
+Image and voice scans use `multipart/form-data`:
+
+- `type=image`, `image=<PNG/JPG/JPEG/WEBP file>`, and optional `language=en`
+- `type=voice`, `audio=<WAV/MP3/M4A/OGG file>`, and optional `language=en`
+- `type=qr`, `image=<PNG/JPG/JPEG/WEBP file>` (or `qr_image`), and optional `language=en`
+
+Images are checked for QR content first, then analyzed with OCR for payment details,
+URLs, or scam text. Voice uploads are transcribed with Whisper and the transcript is
+analyzed with DistilBERT. QR uploads are decoded and their content is routed to the
+UPI, URL, or message detector. The response includes `analysis_type` and extracted
+`content`, `decoded_content`, or `transcription` for media scans.
+
+Successful responses contain `success`, `type`, `classification`, `verdict`, `prediction`,
+`should_warn`, `alert`, `confidence`, `risk_score`, `explanation`, `reasons`, `tips`,
+`detection_type`, detected `language`, localized fields, and a Trinetra `scan_id`.
+The classification is `SAFE`, `SUSPICIOUS`, or `SCAM`; a threat verdict is a successful
+detection, not an API error. Scam and suspicious alerts name the analyzed content type;
+clients should display `alert` in the conversation whenever `should_warn` is true.
+Message responses also include `safe_probability` and
+`scam_probability` for clients using the legacy message-result fields. Secure Chat should show
+`alert` in the conversation when `should_warn` is true; it is null for safe results. The account token is signed, short-lived, tied to the
+consenting Trinetra user, and checked against the current opt-in status on every
+detection. Users can revoke access from the same consent page.
+
+Configure `SECURE_CHAT_API_KEY`, `SECURE_CHAT_ORIGIN` (the exact deployed browser
+origin, no wildcard), `SECURE_CHAT_REDIRECT_URI`, and the code/token TTL values
+from `.env.example`. Existing JSON API routes retain CORS support only for that
+same configured origin; server-to-server requests do not depend on CORS.
 
 ---
 
