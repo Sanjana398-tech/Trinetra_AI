@@ -377,15 +377,19 @@ Image and voice scans use `multipart/form-data`:
 
 - `type=image`, `image=<PNG/JPG/JPEG/WEBP file>`, and optional `language=en`
 - `type=voice`, `audio=<WAV/MP3/M4A/OGG file>`, and optional `language=en`
+- `type=qr`, `image=<PNG/JPG/JPEG/WEBP file>` (or `qr_image`), and optional `language=en`
 
 Images are checked for QR content first, then analyzed with OCR for payment details,
 URLs, or scam text. Voice uploads are transcribed with Whisper and the transcript is
-analyzed with DistilBERT. The response includes `analysis_type` and extracted
-`content` or `transcription` for media scans.
+analyzed with DistilBERT. QR uploads are decoded and their content is routed to the
+UPI, URL, or message detector. The response includes `analysis_type` and extracted
+`content`, `decoded_content`, or `transcription` for media scans.
 
-Successful responses contain `success`, `verdict`, `prediction`, `should_warn`, `alert`, `confidence`,
-`risk_score`, `explanation`, `reasons`, `tips`, `detection_type`, `language`, localized fields,
-and a Trinetra `scan_id`. Scam and suspicious alerts name the analyzed content type;
+Successful responses contain `success`, `type`, `classification`, `verdict`, `prediction`,
+`should_warn`, `alert`, `confidence`, `risk_score`, `explanation`, `reasons`, `tips`,
+`detection_type`, detected `language`, localized fields, and a Trinetra `scan_id`.
+The classification is `SAFE`, `SUSPICIOUS`, or `SCAM`; a threat verdict is a successful
+detection, not an API error. Scam and suspicious alerts name the analyzed content type;
 clients should display `alert` in the conversation whenever `should_warn` is true.
 Message responses also include `safe_probability` and
 `scam_probability` for clients using the legacy message-result fields. Secure Chat should show

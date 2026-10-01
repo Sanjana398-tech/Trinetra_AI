@@ -19,7 +19,12 @@ from werkzeug.utils import secure_filename
 from backend.db_models import ScanHistory, SecureChatAuthorizationCode, SystemLog, User
 from backend.extensions import csrf, db
 from backend.utils.classifiers import classify_message, classify_upi, classify_url
-from backend.utils.localization import normalize_language, to_english, translate
+from backend.utils.localization import (
+    detect_supported_language,
+    normalize_language,
+    to_english,
+    translate,
+)
 from backend.utils.qr_decode import decode_qr
 from backend.utils.screenshot_analyze import (
     analyze as analyze_screenshot,
@@ -30,6 +35,8 @@ from backend.utils.screenshot_analyze import (
 from backend.utils.upi_features import is_valid_upi_id
 from backend.utils.url_features import find_url_in_text
 from backend.utils.voice_transcribe import transcribe_audio
+# Shared detection service — used for QR and image paths
+from backend.utils.detection import detect_qr as _detect_qr, detect_image as _detect_image
 
 logger = logging.getLogger(__name__)
 
@@ -144,6 +151,38 @@ def _classify_image(path, language):
     return raw_text, result
 
 
+def _detect_image_for_sc(path: str, language: str):
+    """
+    Adapter: call detection.detect_image and return (result, extras).
+    Propagates ValueError/RuntimeError for the caller to catch.
+    """
+    result, extras, error = _detect_image(path, language)
+    if error or result is None:
+        # Re-raise as the appropriate typed exception so the route's
+        # except blocks produce the right HTTP status codes.
+        if "not a valid image" in (error or "").lower():
+            raise ValueError(error)
+        if "ocr is currently unavailable" in (error or "").lower() or "not installed" in (error or "").lower():
+            raise RuntimeError(error)
+        raise Exception(error or "Image analysis failed")
+    return result, extras
+
+
+def _detect_qr_for_sc(path: str, language: str):
+    """
+    Adapter: call detection.detect_qr and return (result | None, extras | error_str).
+    Never raises — caller checks result is None to detect failure.
+    """
+    try:
+        result, extras, error = _detect_qr(path, language)
+    except Exception as exc:
+        logger.exception("_detect_qr_for_sc unexpected error")
+        return None, str(exc)
+    if error or result is None:
+        return None, error or "QR detection failed"
+    return result, extras
+
+
 def _serializer():
     return URLSafeTimedSerializer(
         current_app.config["SECRET_KEY"],
@@ -202,6 +241,7 @@ def _save_scan(user, scan_type, content, result, language):
         "message": "message",
         "url": "URL",
         "upi": "UPI payment request",
+        "qr": "QR code",
         "screenshot": "image",
         "voice": "voice message",
     }
@@ -237,7 +277,7 @@ def _save_scan(user, scan_type, content, result, language):
     except Exception:
         db.session.rollback()
         logger.exception("Could not save Secure Chat scan")
-        record = None
+        raise
 
     verdict_label = translate(result["verdict"], language)
     detection_labels = {
@@ -271,13 +311,18 @@ def _save_scan(user, scan_type, content, result, language):
         },
         "scan_id": record.id if record else None,
     }
-    for field in ("analysis_type", "content", "transcription"):
+    for field in ("analysis_type", "content", "transcription", "decoded_content"):
         if field in result:
             response[field] = result[field]
     if scan_type == "message":
         scam_probability = round(float(result["risk"]), 2)
         response["scam_probability"] = scam_probability
         response["safe_probability"] = round(100 - scam_probability, 2)
+    # Contract fields — always present so Secure Chat never has to guess
+    response["type"]           = {"message": "text", "screenshot": "image"}.get(scan_type, scan_type)
+    response["classification"] = verdict.upper()
+    response["risk_score"]     = round(float(result["risk"]), 2)
+    response["alert_required"] = should_warn
     return response
 
 
@@ -461,13 +506,13 @@ def detect_for_secure_chat():
             if upload_error:
                 return jsonify(error=upload_error), 400
             try:
-                content, result = _classify_image(path, language)
+                # Use shared detection.detect_image — handles QR-in-image,
+                # OCR, payment rules, and DistilBERT fallback in one place.
+                result, _extras = _detect_image_for_sc(path, language)
             except ValueError as exc:
-                # Not a valid image (PIL could not decode the file bytes)
                 logger.warning("Secure Chat image rejected: %s", exc)
                 return jsonify(error="The uploaded file is not a valid image"), 400
             except RuntimeError as exc:
-                # Tesseract not installed on this server
                 logger.error("Secure Chat OCR unavailable: %s", exc)
                 return jsonify(error="Image analysis is currently unavailable on the server"), 503
             except Exception:
@@ -475,7 +520,34 @@ def detect_for_secure_chat():
                 return jsonify(error="Image analysis is currently unavailable"), 503
             finally:
                 _remove_upload(path)
+            # Re-attach extras into result so _save_scan can copy them
+            if _extras and result is not None:
+                result.update(_extras)
+            content = result.get("content", "[image]") if result else "[image]"
             scan_type = "screenshot"
+        elif detection_type in {"qr"}:
+            path, upload_error = _store_upload(
+                request.files.get("image") or request.files.get("qr_image"),
+                current_app.config["ALLOWED_IMAGE_EXTENSIONS"],
+            )
+            if upload_error:
+                return jsonify(error=upload_error), 400
+            try:
+                result, _extras = _detect_qr_for_sc(path, language)
+            except Exception:
+                logger.exception("Secure Chat QR detection failed")
+                return jsonify(error="QR analysis failed"), 503
+            finally:
+                _remove_upload(path)
+            if result is None:
+                # _extras holds the error string in this error path
+                err = _extras if isinstance(_extras, str) else "No QR code could be decoded from this image"
+                status = 422 if "no qr" in err.lower() else 503
+                return jsonify(error=err), status
+            if _extras and isinstance(_extras, dict):
+                result.update(_extras)
+            content = result.get("decoded_content", result.get("content", "[qr]"))
+            scan_type = "qr"
         elif detection_type in {"voice", "audio"}:
             path, upload_error = _store_upload(
                 request.files.get("audio") or request.files.get("audio_file"),
@@ -499,7 +571,7 @@ def detect_for_secure_chat():
             content = transcript
             scan_type = "voice"
         else:
-            return jsonify(error="type must be message, url, upi, image, or voice"), 400
+            return jsonify(error="type must be message, url, upi, qr, image, or voice"), 400
     except Exception:
         logger.exception("Secure Chat %s detection failed", detection_type)
         return jsonify(error="Analysis failed due to an internal error"), 500
@@ -507,4 +579,11 @@ def detect_for_secure_chat():
     if result is None:
         return jsonify(error=f"{detection_type} detection model is currently unavailable"), 503
 
-    return jsonify(_save_scan(user, scan_type, content, result, language)), 200
+    language = detect_supported_language(content, language)
+    try:
+        response = _save_scan(user, scan_type, content, result, language)
+    except Exception:
+        logger.exception("Could not persist Secure Chat %s detection", scan_type)
+        return jsonify(error="Detection completed but could not be saved"), 500
+
+    return jsonify(response), 200

@@ -118,7 +118,7 @@ class SecureChatIntegrationTests(unittest.TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertEqual(
             response.get_json()["error"],
-            "type must be message, url, upi, image, or voice",
+            "type must be message, url, upi, qr, image, or voice",
         )
 
     def test_real_detectors_return_normalized_results_and_account_attribution(self):
@@ -215,12 +215,10 @@ class SecureChatIntegrationTests(unittest.TestCase):
             "reasons": ["Test image reason"],
             "tips": ["Test image action"],
         }
-        with patch("backend.routes.secure_chat.decode_qr", return_value=(None, None)), patch(
-            "backend.routes.secure_chat.extract_text",
-            return_value="Urgent account warning: verify your account at once.",
-        ), patch("backend.routes.secure_chat.parse_fields", return_value={}), patch(
-            "backend.routes.secure_chat.find_url_in_text", return_value=None
-        ), patch("backend.routes.secure_chat.classify_message", return_value=classification):
+        with patch(
+            "backend.routes.secure_chat._detect_image_for_sc",
+            return_value=(classification, {"analysis_type": "image-text", "content": "Urgent account warning"}),
+        ):
             response = self.client.post(
                 "/api/secure-chat/v1/detect",
                 data={
@@ -279,6 +277,109 @@ class SecureChatIntegrationTests(unittest.TestCase):
             ScanHistory.query.filter_by(user_id=self.user.id, scan_type="voice").count(),
             1,
         )
+
+    def test_qr_detection_returns_normalized_result_and_saves_history(self):
+        _, token = self._enable_and_exchange()
+        headers = {
+            **self._service_headers(),
+            "Authorization": f"Bearer {token}",
+        }
+        classification = {
+            "engine": "url",
+            "verdict": "scam",
+            "confidence": 93.0,
+            "risk": 91.0,
+            "reasons": ["Test QR reason"],
+            "tips": ["Test QR action"],
+        }
+        with patch(
+            "backend.routes.secure_chat._detect_qr_for_sc",
+            return_value=(classification, {
+                "analysis_type": "qr-url",
+                "decoded_content": "https://example.test/login",
+                "content": "https://example.test/login",
+            }),
+        ):
+            response = self.client.post(
+                "/api/secure-chat/v1/detect",
+                data={
+                    "type": "qr",
+                    "image": (BytesIO(b"image bytes"), "qr.png"),
+                    "language": "en",
+                },
+                headers=headers,
+            )
+
+        self.assertEqual(response.status_code, 200, response.get_json())
+        result = response.get_json()
+        self.assertEqual(result["type"], "qr")
+        self.assertEqual(result["classification"], "SCAM")
+        self.assertEqual(result["language"], "en")
+        self.assertGreaterEqual(result["risk_score"], 0)
+        self.assertTrue(result["scan_id"])
+        self.assertEqual(result["analysis_type"], "qr-url")
+        self.assertEqual(
+            ScanHistory.query.filter_by(user_id=self.user.id, scan_type="qr").count(),
+            1,
+        )
+
+    def test_scan_persistence_failure_returns_server_error(self):
+        _, token = self._enable_and_exchange()
+        headers = {
+            **self._service_headers(),
+            "Authorization": f"Bearer {token}",
+        }
+        with patch(
+            "backend.routes.secure_chat.classify_message",
+            return_value={
+                "engine": "DistilBERT",
+                "verdict": "safe",
+                "confidence": 99.0,
+                "risk": 1.0,
+                "reasons": [],
+                "tips": [],
+            },
+        ), patch.object(db.session, "commit", side_effect=RuntimeError("database unavailable")):
+            response = self.client.post(
+                "/api/secure-chat/v1/detect",
+                json={"type": "message", "text": "hello"},
+                headers=headers,
+            )
+
+        self.assertEqual(response.status_code, 500)
+        self.assertIn("error", response.get_json())
+
+    def test_detected_script_language_is_returned_and_used_for_alert(self):
+        _, token = self._enable_and_exchange()
+        headers = {
+            **self._service_headers(),
+            "Authorization": f"Bearer {token}",
+        }
+        with patch(
+            "backend.routes.secure_chat.classify_message",
+            return_value={
+                "engine": "DistilBERT",
+                "verdict": "scam",
+                "confidence": 95.0,
+                "risk": 92.0,
+                "reasons": [],
+                "tips": [],
+            },
+        ), patch("backend.routes.secure_chat.to_english", return_value="English text"), patch(
+            "backend.routes.secure_chat.translate",
+            side_effect=lambda text, language: f"{language}:{text}",
+        ):
+            response = self.client.post(
+                "/api/secure-chat/v1/detect",
+                json={"type": "message", "text": "आपका खाता बंद हो जाएगा"},
+                headers=headers,
+            )
+
+        self.assertEqual(response.status_code, 200, response.get_json())
+        result = response.get_json()
+        self.assertEqual(result["language"], "hi")
+        self.assertTrue(result["alert"].startswith("hi:"))
+        self.assertEqual(result["localized"]["language"], "hi")
 
     def test_url_and_upi_alerts_name_the_detected_content(self):
         _, token = self._enable_and_exchange()

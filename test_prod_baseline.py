@@ -10,14 +10,16 @@ Usage:
 """
 
 import sys
+import os
 import struct
 import base64
 import json
 import time
 import urllib.request
 import urllib.error
+import cv2
 
-BASE = "https://trinetra-ai-ua5e.onrender.com"
+BASE = os.environ.get("TRINETRA_BASE_URL", "https://trinetra-ai-ua5e.onrender.com").rstrip("/")
 LABEL = sys.argv[2] if len(sys.argv) > 2 else sys.argv[1] if len(sys.argv) > 1 else "current"
 
 PASS = "PASS"
@@ -155,6 +157,16 @@ WAV_SILENT = struct.pack(
     b"data", 0,
 )
 
+
+def _qr_png(payload):
+    matrix = cv2.QRCodeEncoder_create().encode(payload)
+    matrix = cv2.copyMakeBorder(matrix, 24, 24, 24, 24, cv2.BORDER_CONSTANT, value=255)
+    image = cv2.resize(matrix, None, fx=4, fy=4, interpolation=cv2.INTER_NEAREST)
+    success, encoded = cv2.imencode(".png", image)
+    if not success:
+        raise RuntimeError("Could not encode QR test fixture")
+    return encoded.tobytes()
+
 SCAM_MSG = (
     "URGENT: Your SBI bank account has been blocked. "
     "Verify your OTP at http://sbi-secure-update.tk/login "
@@ -254,7 +266,39 @@ print(f"  ({elapsed:.1f}s)")
 check("4. Image scan → any 2xx response + scan_id", s, b,
       expect_status=200, expect_success=True, expect_scan_id=True)
 
-# ── 5–6. Voice ────────────────────────────────────────────────────────────────
+# ── 5–7. QR content routing ──────────────────────────────────────────────────
+print("\n── QR code routing ─────────────────────────────────────────")
+qr_cases = (
+    ("URL", "https://sbi-secure-update.tk/login", "url"),
+    ("UPI", "upi://pay?pa=fraud%40badbank&pn=Refund&am=5000", "upi"),
+    ("text", "Urgent: claim your prize now", "message"),
+)
+for label, payload, expected_type in qr_cases:
+    print(f"  Sending QR containing {label}...")
+    s, b = _post_multipart(
+        "/api/analyze-qr",
+        {"user_id": "kiro_test"},
+        {"image": (f"qr-{label.lower()}.png", _qr_png(payload), "image/png")},
+        timeout=90,
+    )
+    check(
+        f"QR containing {label} → 200 + success + scan_id",
+        s,
+        b,
+        expect_status=200,
+        expect_success=True,
+        expect_scan_id=True,
+    )
+    if b.get("type") != "qr" or b.get("decoded_content") != payload:
+        results[-1] = (results[-1][0], FAIL, ["QR type or decoded payload mismatch"], s, b)
+        print("     QR type or decoded payload mismatch")
+    elif b.get("analysis_type") != f"qr-{expected_type}" and not (
+        expected_type == "message" and b.get("analysis_type") == "qr-text"
+    ):
+        results[-1] = (results[-1][0], FAIL, ["QR routed to unexpected detector"], s, b)
+        print(f"     analysis_type={b.get('analysis_type')} (unexpected)")
+
+# ── 8–9. Voice ────────────────────────────────────────────────────────────────
 print("\n── Voice ───────────────────────────────────────────────────")
 print("  Sending silent WAV (Whisper will report no speech)...")
 print("  NOTE: first call downloads Whisper model — may take 60-90 s...")
@@ -294,7 +338,7 @@ if s in (422, 503) and b.get("success") is False:
     results[-1] = (results[-1][0], PASS, [], s, b)
     print(f"     NOTE: HTTP {s} with JSON body = acceptable (clean error, not silent 502)")
 
-# ── 7–8. Invalid inputs ───────────────────────────────────────────────────────
+# ── 10–14. Invalid inputs ────────────────────────────────────────────────────
 print("\n── Error handling ──────────────────────────────────────────")
 
 s, b = _post_multipart(
@@ -321,7 +365,7 @@ s, b = _post_multipart("/api/analyze-voice", {"user_id": "x"}, {})
 check("10. Missing audio file → 400", s, b,
       expect_status=400, expect_success=False)
 
-# ── 9. CORS preflights ────────────────────────────────────────────────────────
+# ── 15–16. CORS preflights ───────────────────────────────────────────────────
 print("\n── CORS ────────────────────────────────────────────────────")
 
 status, hdrs = _options("/api/analyze-message", ORIGIN)
@@ -342,7 +386,7 @@ results.append(("CORS /api/secure-chat/v1/detect", verdict2, [], status2, {}))
 print(f"  {icon2} [{verdict2}] CORS preflight /api/secure-chat/v1/detect")
 print(f"       HTTP {status2}  Access-Control-Allow-Origin: {acao2 or 'MISSING'}")
 
-# ── 10. Repeated request (idempotency / no duplicate scan) ────────────────────
+# ── 17. Repeated request (idempotency / no duplicate scan) ────────────────────
 print("\n── Repeated request ────────────────────────────────────────")
 s1, b1 = _post_json("/api/analyze-message", {"message": SAFE_MSG, "user_id": "kiro_repeat"})
 s2, b2 = _post_json("/api/analyze-message", {"message": SAFE_MSG, "user_id": "kiro_repeat"})
@@ -350,8 +394,8 @@ both_ok = s1 == 200 and s2 == 200 and b1.get("success") and b2.get("success")
 id1, id2 = b1.get("scan_id"), b2.get("scan_id")
 different_ids = id1 != id2
 icon_r = "✅" if both_ok else "❌"
-results.append(("10. Repeated request", PASS if both_ok else FAIL, [], 200, {}))
-print(f"  {icon_r} [{'PASS' if both_ok else 'FAIL'}] 10. Repeated request → both succeed, separate scan IDs")
+results.append(("17. Repeated request", PASS if both_ok else FAIL, [], 200, {}))
+print(f"  {icon_r} [{'PASS' if both_ok else 'FAIL'}] 17. Repeated request → both succeed, separate scan IDs")
 print(f"       scan_id 1={id1}  scan_id 2={id2}  different={different_ids}")
 
 # ─────────────────────────────────────────────────────────────────────────────
