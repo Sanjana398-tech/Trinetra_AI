@@ -22,6 +22,9 @@ import pytesseract
 
 logger = logging.getLogger(__name__)
 
+_MAX_OCR_DIMENSION = 3200
+_OCR_TIMEOUT_SECONDS = 15
+
 
 # =============================================================
 # OCR
@@ -79,14 +82,24 @@ def extract_text(image_path: str, tesseract_cmd: str = "") -> str:
     try:
         with img_obj:
             img_processed = img_obj.convert("L")  # grayscale
+            img_processed.thumbnail(
+                (_MAX_OCR_DIMENSION, _MAX_OCR_DIMENSION),
+                Image.LANCZOS,
+            )
             img_processed = ImageOps.autocontrast(img_processed)
-            if img_processed.width < 900:
+            if (
+                img_processed.width < 900
+                and img_processed.height * 900 / img_processed.width <= _MAX_OCR_DIMENSION
+            ):
                 scale = 900 / img_processed.width
                 img_processed = img_processed.resize(
                     (int(img_processed.width * scale), int(img_processed.height * scale)),
                     Image.LANCZOS,
                 )
-            text = pytesseract.image_to_string(img_processed)
+            text = pytesseract.image_to_string(
+                img_processed,
+                timeout=_OCR_TIMEOUT_SECONDS,
+            )
     except RuntimeError:
         raise  # re-raise our own RuntimeError from above (should not occur here)
     except Exception as exc:

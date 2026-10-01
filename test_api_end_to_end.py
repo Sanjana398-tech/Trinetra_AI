@@ -2,9 +2,12 @@
 
 import unittest
 from io import BytesIO
+from pathlib import Path
+from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
 import cv2
+from PIL import Image
 
 from backend import create_app
 from backend.db_models import ScanHistory
@@ -198,6 +201,29 @@ class AnalysisApiEndToEndTests(unittest.TestCase):
                         "photo" if verdict == "safe" else "payment-screenshot",
                     )
                     self._clear_scans()
+
+    def test_screenshot_ocr_is_bounded_and_downscales_large_images(self):
+        from backend.utils.screenshot_analyze import (
+            _MAX_OCR_DIMENSION,
+            _OCR_TIMEOUT_SECONDS,
+            extract_text,
+        )
+
+        with TemporaryDirectory() as directory:
+            image_path = Path(directory) / "large.png"
+            Image.new("RGB", (5000, 1000), "white").save(image_path)
+            with patch(
+                "backend.utils.screenshot_analyze._tesseract_available",
+                return_value=True,
+            ), patch(
+                "backend.utils.screenshot_analyze.pytesseract.image_to_string",
+                return_value="Payment received",
+            ) as ocr:
+                self.assertEqual(extract_text(str(image_path)), "Payment received")
+
+        processed_image = ocr.call_args.args[0]
+        self.assertLessEqual(max(processed_image.size), _MAX_OCR_DIMENSION)
+        self.assertEqual(ocr.call_args.kwargs["timeout"], _OCR_TIMEOUT_SECONDS)
 
     def test_voice_wav_upload(self):
         prediction = {

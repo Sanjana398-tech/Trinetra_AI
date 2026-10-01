@@ -1,6 +1,7 @@
 import unittest
 from io import BytesIO
 from urllib.parse import parse_qs, urlsplit
+import time
 from unittest.mock import patch
 
 from backend import create_app
@@ -380,6 +381,24 @@ class SecureChatIntegrationTests(unittest.TestCase):
         self.assertEqual(result["language"], "hi")
         self.assertTrue(result["alert"].startswith("hi:"))
         self.assertEqual(result["localized"]["language"], "hi")
+
+    def test_slow_translation_provider_falls_back_without_blocking(self):
+        from backend.utils.localization import translate_text
+
+        phrase = "यह धीमे अनुवाद प्रदाता का परीक्षण है"
+
+        class SlowTranslator:
+            def translate(self, _text):
+                time.sleep(0.1)
+                return "translated"
+
+        translate_text.cache_clear()
+        with patch("deep_translator.GoogleTranslator", return_value=SlowTranslator()), patch(
+            "deep_translator.MyMemoryTranslator", return_value=SlowTranslator()
+        ), patch("backend.utils.localization._TRANSLATION_TIMEOUT_SECONDS", 0.01):
+            translated = translate_text(phrase, "hi", "en")
+
+        self.assertEqual(translated, phrase)
 
     def test_url_and_upi_alerts_name_the_detected_content(self):
         _, token = self._enable_and_exchange()

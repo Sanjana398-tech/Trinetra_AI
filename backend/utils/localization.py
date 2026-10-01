@@ -2,9 +2,19 @@
 
 import re
 import logging
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
 from functools import lru_cache
+from threading import BoundedSemaphore
 
 logger = logging.getLogger(__name__)
+
+_TRANSLATION_TIMEOUT_SECONDS = 1.0
+_TRANSLATION_WORKERS = 2
+_translation_executor = ThreadPoolExecutor(
+    max_workers=_TRANSLATION_WORKERS,
+    thread_name_prefix="trinetra-translation",
+)
+_translation_slots = BoundedSemaphore(_TRANSLATION_WORKERS)
 
 SUPPORTED_LANGUAGES = {
     "en": "English",
@@ -250,6 +260,24 @@ def detect_supported_language(text, preferred_language=DEFAULT_LANGUAGE):
     return detected if count else normalize_language(preferred_language)
 
 
+def _translate_with_timeout(provider, text):
+    """Run an optional online translation without blocking a scan indefinitely."""
+    if not _translation_slots.acquire(blocking=False):
+        return None
+
+    future = _translation_executor.submit(provider.translate, str(text))
+    future.add_done_callback(lambda _future: _translation_slots.release())
+    try:
+        return future.result(timeout=_TRANSLATION_TIMEOUT_SECONDS)
+    except FuturesTimeoutError:
+        future.cancel()
+        logger.warning(
+            "Translation provider timed out after %.1f seconds",
+            _TRANSLATION_TIMEOUT_SECONDS,
+        )
+        return None
+
+
 @lru_cache(maxsize=512)
 def translate_text(text, source_language="auto", target_language=DEFAULT_LANGUAGE):
     """Translate user text for the English-only detector and localized alerts.
@@ -281,9 +309,10 @@ def translate_text(text, source_language="auto", target_language=DEFAULT_LANGUAG
 
     for provider in providers:
         try:
-            translated = provider.translate(str(text))
+            translated = _translate_with_timeout(provider, text)
             if translated:
                 return translated
+            break
         except Exception as error:  # noqa: BLE001 - try the next provider
             logger.warning("Translation provider failed: %s", error)
     return text
