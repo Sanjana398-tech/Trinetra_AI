@@ -43,6 +43,12 @@ class BaseConfig:
 
     SECRET_KEY = os.environ.get("SECRET_KEY", "dev-insecure-key-change-me")
 
+    SECURE_CHAT_API_KEY = os.environ.get("SECURE_CHAT_API_KEY", "")
+    SECURE_CHAT_ORIGIN = os.environ.get("SECURE_CHAT_ORIGIN", "").rstrip("/")
+    SECURE_CHAT_REDIRECT_URI = os.environ.get("SECURE_CHAT_REDIRECT_URI", "")
+    SECURE_CHAT_CODE_TTL_SECONDS = int(os.environ.get("SECURE_CHAT_CODE_TTL_SECONDS", "300"))
+    SECURE_CHAT_TOKEN_TTL_SECONDS = int(os.environ.get("SECURE_CHAT_TOKEN_TTL_SECONDS", "3600"))
+
     SQLALCHEMY_DATABASE_URI = os.environ.get(
         "DATABASE_URL", f"sqlite:///{DATABASE_DIR / 'trinetra.db'}"
     )
@@ -60,7 +66,7 @@ class BaseConfig:
 
     DISTILBERT_MODEL_PATH = str(MODELS_DIR / "distilbert")
 
-    URL_MODEL_PATH = str(MODELS_DIR / "url_model.pkl")
+    URL_MODEL_PATH = str(MODELS_DIR / "xgboost" / "url_model.pkl")
     UPI_MODEL_PATH = str(MODELS_DIR / "upi_model.pkl")
     # Voice Scam Detection (Phase 4): smallest Whisper checkpoint by default —
     # fast and small enough to download on a typical dev/demo machine.

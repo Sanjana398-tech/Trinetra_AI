@@ -87,16 +87,38 @@ def create_app(config_name: str = None) -> Flask:
     # and secure-cookie checks behave correctly behind HTTPS termination.
     app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
 
-    # ---- CORS for Secure Chat integration ---------------------------------
-    # Allow the Secure Chat backend (localhost:3000) to call the analysis API.
+    # ── CORS ─────────────────────────────────────────────────────────────
+    # Allow the Secure Chat frontend/backend to call every /api/* route
+    # (both the unauthenticated api_bp endpoints and the authenticated
+    # /api/secure-chat/v1/* endpoints in secure_chat_bp).
+    #
+    # SECURE_CHAT_ORIGIN should be the *exact* browser-facing origin of
+    # Secure Chat including scheme, e.g.:
+    #   https://secure-chat-two-green.vercel.app
+    #
+    # If the env var is absent we fall back to the known production origin
+    # so that a missing config does not silently break CORS preflight.
+    _DEFAULT_SECURE_CHAT_ORIGIN = "https://secure-chat-two-green.vercel.app"
+    secure_chat_origin = (
+        app.config.get("SECURE_CHAT_ORIGIN") or _DEFAULT_SECURE_CHAT_ORIGIN
+    ).rstrip("/")
+    if not app.config.get("SECURE_CHAT_ORIGIN"):
+        app.logger.warning(
+            "SECURE_CHAT_ORIGIN is not set — falling back to default origin '%s'. "
+            "Set SECURE_CHAT_ORIGIN in your environment to suppress this warning.",
+            _DEFAULT_SECURE_CHAT_ORIGIN,
+        )
+
     CORS(app, resources={
         r"/api/*": {
-            "origins": [
-                "http://localhost:3000",
-                "http://127.0.0.1:3000",
+            "origins": [secure_chat_origin],
+            "methods": ["GET", "POST", "OPTIONS"],
+            "allow_headers": [
+                "Content-Type",
+                "X-Secure-Chat-Key",
+                "Authorization",
             ],
-            "methods": ["POST", "OPTIONS"],
-            "allow_headers": ["Content-Type"],
+            "supports_credentials": False,
         }
     })
 
@@ -139,11 +161,14 @@ def create_app(config_name: str = None) -> Flask:
     from backend.routes.knowledge import knowledge_bp
     from backend.routes.reports import reports_bp
     from backend.routes.api import api_bp
+    from backend.routes.secure_chat import secure_chat_bp
     from backend.routes.analytics import analytics_bp
+    from backend.routes.universal_dashboard import universal_dashboard_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(dashboard_bp)
     app.register_blueprint(analytics_bp)
+    app.register_blueprint(universal_dashboard_bp)
     app.register_blueprint(history_bp)
     app.register_blueprint(message_scan_bp)
     app.register_blueprint(url_scan_bp)
@@ -154,6 +179,7 @@ def create_app(config_name: str = None) -> Flask:
     app.register_blueprint(knowledge_bp)
     app.register_blueprint(reports_bp)
     app.register_blueprint(api_bp)
+    app.register_blueprint(secure_chat_bp)
 
     # Exempt the API blueprint from CSRF (server-to-server calls from Secure Chat)
     csrf.exempt(api_bp)
@@ -162,6 +188,17 @@ def create_app(config_name: str = None) -> Flask:
     with app.app_context():
         from backend import db_models  # noqa: F401  (registers models with SQLAlchemy)
         db.create_all()
+
+        user_columns = {
+            column["name"]
+            for column in db.inspect(db.engine).get_columns("users")
+        }
+        if "secure_chat_enabled" not in user_columns:
+            db.session.execute(db.text(
+                "ALTER TABLE users "
+                "ADD COLUMN secure_chat_enabled BOOLEAN NOT NULL DEFAULT FALSE"
+            ))
+            db.session.commit()
 
         # ``create_all`` does not update tables that already exist. Add fields
         # introduced after the initial local database schema was created.
@@ -217,6 +254,18 @@ def create_app(config_name: str = None) -> Flask:
             db_ok = False
         status = "ok" if db_ok else "degraded"
         return jsonify(status=status, database=db_ok), (200 if db_ok else 503)
+
+    @app.route("/health")
+    def health():
+        """
+        Lightweight health endpoint — does NOT load ML models.
+
+        Returns HTTP 200 immediately as long as the process is alive.
+        Used by Secure Chat (and any uptime monitor) to distinguish
+        "Trinetra is down" from "Trinetra returned a detection result".
+        A separate database ping lives at /healthz for deeper checks.
+        """
+        return jsonify(status="ok", service="trinetra-ai"), 200
 
     # ---- Global error handlers --------------------------------------------
     @app.errorhandler(404)
