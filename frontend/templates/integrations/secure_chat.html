@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Secure Chat Protection · TRINETRA AI{% endblock %}
+{% block content %}
+<section class="page-heading">
+  <div>
+    <p class="eyebrow">Connected application</p>
+    <h1>Secure Chat Protection</h1>
+    <p>Allow Secure Chat to submit messages, links, and UPI payment details to your Trinetra AI account for analysis.</p>
+  </div>
+</section>
+
+<section class="content-section" aria-labelledby="protection-status">
+  <h2 id="protection-status">Account consent</h2>
+  {% if error %}<p class="form-error" role="alert">{{ error }}</p>{% endif %}
+  {% if enabled %}
+    <p>Trinetra AI Protection is enabled for {{ current_user.email }}.</p>
+  {% else %}
+    <p>Protection is currently disabled. Secure Chat cannot run Trinetra detection for this account until you enable it here.</p>
+  {% endif %}
+  <form method="post" action="{{ url_for('secure_chat.authorize_secure_chat') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="state" value="{{ state }}">
+    <label class="check-row">
+      <input type="checkbox" name="consent" value="yes" required>
+      <span>I explicitly enable Trinetra AI Protection for my Secure Chat account.</span>
+    </label>
+    <button class="btn btn-primary" type="submit">Enable and continue</button>
+  </form>
+  {% if enabled %}
+    <form method="post" action="{{ url_for('secure_chat.revoke_secure_chat') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button class="btn btn-secondary" type="submit">Revoke Secure Chat access</button>
+    </form>
+  {% endif %}
+</section>
+{% endblock %}

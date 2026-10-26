@@ -18,8 +18,9 @@ Routes:
 import csv
 import io
 from datetime import datetime
+from functools import wraps
 
-from flask import Blueprint, Response, jsonify, render_template, request, url_for
+from flask import Blueprint, Response, abort, jsonify, render_template, request, url_for
 from flask_login import current_user, login_required
 
 from backend.utils.analytics_query import (
@@ -31,12 +32,23 @@ from backend.utils.analytics_query import (
     build_table,
     build_timeline,
     build_type_date,
+    build_universal_overview,
     filtered_query,
     iter_export_rows,
     parse_filters,
 )
 
 analytics_bp = Blueprint("analytics", __name__)
+
+
+def admin_required(view):
+    @wraps(view)
+    def wrapped(*args, **kwargs):
+        if not current_user.is_admin:
+            abort(403)
+        return view(*args, **kwargs)
+
+    return login_required(wrapped)
 
 
 def _query_bundle():
@@ -55,6 +67,25 @@ def analytics_page():
         overview_url=url_for("analytics.overview_api"),
         export_url=url_for("analytics.export_csv"),
     )
+
+
+@analytics_bp.route("/admin/analytics")
+@admin_required
+def universal_analytics_page():
+    return render_template(
+        "analytics.html",
+        active_page="admin-analytics",
+        page_title="Universal Analytics",
+        universal=True,
+        overview_url=url_for("analytics.universal_overview_api"),
+        export_url=None,
+    )
+
+
+@analytics_bp.route("/api/admin/analytics/overview")
+@admin_required
+def universal_overview_api():
+    return jsonify(build_universal_overview(request.args))
 
 
 @analytics_bp.route("/api/analytics/overview")
