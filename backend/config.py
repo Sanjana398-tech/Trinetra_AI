@@ -37,12 +37,11 @@ TESSERACT_PATH = next(
 for _directory in (DATABASE_DIR, UPLOADS_DIR, MODELS_DIR):
     _directory.mkdir(parents=True, exist_ok=True)
 
-_database_url = os.environ.get("DATABASE_URL")
-if _database_url:
-    for _postgres_scheme in ("postgres://", "postgresql://"):
-        if _database_url.startswith(_postgres_scheme):
-            _database_url = "postgresql+psycopg2://" + _database_url[len(_postgres_scheme):]
-            break
+def normalize_database_url(database_url: str) -> str:
+    for postgres_scheme in ("postgres://", "postgresql://"):
+        if database_url.startswith(postgres_scheme):
+            return "postgresql+psycopg2://" + database_url[len(postgres_scheme):]
+    return database_url
 
 
 class BaseConfig:
@@ -56,10 +55,8 @@ class BaseConfig:
     SECURE_CHAT_CODE_TTL_SECONDS = int(os.environ.get("SECURE_CHAT_CODE_TTL_SECONDS", "300"))
     SECURE_CHAT_TOKEN_TTL_SECONDS = int(os.environ.get("SECURE_CHAT_TOKEN_TTL_SECONDS", "3600"))
 
-    SQLALCHEMY_DATABASE_URI = (
-        _database_url
-        if _database_url is not None
-        else f"sqlite:///{DATABASE_DIR / 'trinetra.db'}"
+    SQLALCHEMY_DATABASE_URI = os.environ.get(
+        "DATABASE_URL", f"sqlite:///{DATABASE_DIR / 'trinetra.db'}"
     )
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 

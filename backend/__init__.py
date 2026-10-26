@@ -15,7 +15,7 @@ from flask_cors import CORS
 
 load_dotenv()  # populate os.environ from a local .env file, if present
 
-from backend.config import get_config
+from backend.config import get_config, normalize_database_url
 from backend.extensions import db, login_manager, csrf
 from backend.utils.localization import (
     SUPPORTED_LANGUAGES,
@@ -43,6 +43,9 @@ def create_app(config_name: str = None) -> Flask:
 
     # ---- Configuration -------------------------------------------------
     app.config.from_object(get_config(config_name))
+    app.config["SQLALCHEMY_DATABASE_URI"] = normalize_database_url(
+        app.config["SQLALCHEMY_DATABASE_URI"]
+    )
 
     @app.before_request
     def select_language():
