@@ -11,9 +11,8 @@ from collections import OrderedDict
 
 from sqlalchemy import func
 
-from backend.db_models import ScanHistory
+from backend.db_models import ScanHistory, User
 from backend.utils.channels import CHANNEL_TYPES, channel_label
-from backend.utils.scan_visibility import visible_scans_query
 
 VALID_RANGES = ("today", "7d", "30d", "90d", "all", "custom")
 VALID_VERDICTS = ("safe", "suspicious", "scam")
@@ -91,7 +90,16 @@ def parse_filters(args):
 
 
 def filtered_query(user, filters):
-    query = visible_scans_query(user)
+    query = ScanHistory.query.filter(ScanHistory.user_id == user.id)
+    return _apply_filters(query, filters)
+
+
+def universal_filtered_query(filters):
+    query = ScanHistory.query.join(User, ScanHistory.user_id == User.id)
+    return _apply_filters(query, filters)
+
+
+def _apply_filters(query, filters):
     if filters["start"] is not None:
         query = query.filter(ScanHistory.created_at >= filters["start"])
     if filters["end"] is not None:
@@ -106,7 +114,7 @@ def filtered_query(user, filters):
 def available_types(user):
     """Supported modules, plus any extra scan_type values already stored."""
     rows = (
-        visible_scans_query(user)
+        ScanHistory.query.filter(ScanHistory.user_id == user.id)
         .with_entities(ScanHistory.scan_type)
         .distinct()
         .all()
@@ -479,6 +487,58 @@ def build_overview(user, args):
             "labels": timeline["labels"],
             "values": timeline["threats"],
         },
+        "byType": build_by_type(scoped()),
+        "scamByType": build_scam_by_type(scoped()),
+        "byVerdict": {
+            "safe": summary["safe"],
+            "suspicious": summary["suspicious"],
+            "scam": summary["scam"],
+        },
+        "typeDate": build_type_date(scoped(), filters),
+        "recentThreats": build_recent_threats(scoped()),
+        "table": build_table(scoped()),
+    }
+
+
+def build_universal_overview(args):
+    filters = parse_filters(args)
+
+    def scoped():
+        return universal_filtered_query(filters)
+
+    summary = build_summary(scoped())
+    timeline = build_timeline(scoped(), filters)
+    all_registered_scans = ScanHistory.query.join(User, ScanHistory.user_id == User.id)
+    type_rows = (
+        all_registered_scans.with_entities(ScanHistory.scan_type)
+        .distinct()
+        .all()
+    )
+    seen_types = {row[0] for row in type_rows if row[0]}
+    types = list(CHANNEL_TYPES)
+    types.extend(sorted(seen_types - set(CHANNEL_TYPES)))
+    summary["totalUsers"] = User.query.count()
+    summary["activeUsers"] = (
+        scoped().with_entities(func.count(func.distinct(ScanHistory.user_id))).scalar() or 0
+    )
+
+    return {
+        "filters": {
+            "range": filters["range"],
+            "start": filters["start_date"],
+            "end": filters["end_date"],
+            "type": filters["scan_type"],
+            "verdict": filters["verdict"],
+        },
+        "types": [
+            {"key": key, "label": channel_label(key)}
+            for key in types
+            if key in CHANNEL_TYPES or key in seen_types
+        ],
+        "empty": summary["total"] == 0,
+        "summary": summary,
+        "timeline": timeline,
+        "threatTrend": {"labels": timeline["labels"], "values": timeline["threats"]},
         "byType": build_by_type(scoped()),
         "scamByType": build_scam_by_type(scoped()),
         "byVerdict": {

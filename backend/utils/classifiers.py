@@ -123,12 +123,25 @@ def classify_upi(upi_id: str, amount: float = None, note: str = ""):
         upi_id, amount, note
     )
     prediction = detector.predict(normalized_upi, transaction)
+    reasons = _upi_reasons(normalized_upi, amount_value, note_value)
+    verdict = prediction["verdict"]
+    risk = float(prediction["risk"])
+
+    # The saved detector has low fraud recall. Preserve its SCAM verdicts, but
+    # do not let a SAFE prediction erase the existing deterministic warnings.
+    rule_flags = [
+        reason for reason in reasons
+        if not reason.startswith("No obvious structural or textual warning signs")
+    ]
+    if verdict.lower() == "safe" and rule_flags:
+        verdict = "suspicious"
+        risk = max(risk, 40.0)
 
     return {
         "engine": "upi_gnn_xgboost",
-        "verdict": prediction["verdict"],
+        "verdict": verdict,
         "confidence": prediction["confidence"],
-        "risk": prediction["risk"],
-        "reasons": _upi_reasons(normalized_upi, amount_value, note_value),
-        "tips": _upi_tips(prediction["verdict"]),
+        "risk": risk,
+        "reasons": reasons,
+        "tips": _upi_tips(verdict),
     }

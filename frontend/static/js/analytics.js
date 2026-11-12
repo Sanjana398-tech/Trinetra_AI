@@ -110,6 +110,8 @@
     setText('[data-stat="safe"]', String(s.safe || 0));
     setText('[data-stat="suspicious"]', String(s.suspicious || 0));
     setText('[data-stat="scam"]', String(s.scam || 0));
+    setText('[data-stat="totalUsers"]', String(s.totalUsers || 0));
+    setText('[data-stat="activeUsers"]', String(s.activeUsers || 0));
     setText('[data-stat="detectionRate"]', (s.detectionRate != null ? s.detectionRate : 0) + "%");
     const threat = s.mostCommonThreat;
     setText(

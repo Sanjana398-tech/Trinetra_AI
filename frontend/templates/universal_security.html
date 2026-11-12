@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% from "partials/icons.html" import icon %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/universal_security.css') }}">
+{% endblock %}
+
+{% block content %}
+<main class="universal-dashboard" id="universalDashboard" data-overview-url="{{ overview_url }}">
+  <header class="universal-heading">
+    <div>
+      <p class="universal-eyebrow"><span class="live-indicator"></span> GLOBAL THREAT INTELLIGENCE</p>
+      <h1>Universal Security Dashboard</h1>
+      <p class="universal-subtitle">Cross-account security telemetry, reduced to aggregate signals.</p>
+    </div>
+    <div class="universal-scope"><span class="scope-mark"></span> ALL ACCOUNTS <span class="scope-divider"></span> AGGREGATED ONLY</div>
+  </header>
+
+  <section class="universal-toolbar" aria-label="Date filters">
+    <div class="range-selector" role="group" aria-label="Activity period">
+      <button type="button" data-range="today">Today</button>
+      <button type="button" data-range="7d">7 days</button>
+      <button type="button" data-range="30d" class="is-active" aria-pressed="true">30 days</button>
+      <button type="button" data-range="custom">Custom</button>
+    </div>
+    <div class="custom-dates" id="customDates" hidden>
+      <label>From <input type="date" id="dateStart"></label>
+      <label>To <input type="date" id="dateEnd"></label>
+      <button class="apply-range" id="applyCustom" type="button">Apply</button>
+    </div>
+    <p class="range-status" id="rangeStatus" aria-live="polite">Loading aggregate telemetry…</p>
+  </section>
+
+  <p class="dashboard-error" id="dashboardError" role="alert" hidden></p>
+
+  <section class="command-stats" aria-label="Global security statistics">
+    <article class="command-stat stat-users"><span class="stat-kicker">REGISTERED USERS</span><strong data-summary="registeredUsers">—</strong><span class="stat-foot">accounts in Trinetra</span></article>
+    <article class="command-stat stat-total"><span class="stat-kicker">TOTAL SCANS</span><strong data-summary="totalScans">—</strong><span class="stat-foot">within selected period</span></article>
+    <article class="command-stat stat-safe"><span class="stat-kicker">SAFE</span><strong data-summary="safe">—</strong><span class="stat-foot">cleared detections</span></article>
+    <article class="command-stat stat-suspicious"><span class="stat-kicker">SUSPICIOUS</span><strong data-summary="suspicious">—</strong><span class="stat-foot">review advised</span></article>
+    <article class="command-stat stat-scam"><span class="stat-kicker">SCAM</span><strong data-summary="scam">—</strong><span class="stat-foot">confirmed scam verdicts</span></article>
+    <article class="command-stat stat-rate"><span class="stat-kicker">SCAM RATE</span><strong><span data-summary="scamPercentage">—</span><small>%</small></strong><span class="stat-foot">of all scans in range</span></article>
+  </section>
+
+  <section class="overview-grid">
+    <article class="command-panel mesh-panel">
+      <div class="panel-heading">
+        <div><p class="panel-overline">NETWORK OVERVIEW</p><h2>Global signal mesh</h2></div>
+        <div class="mesh-mode" role="group" aria-label="Mesh signal mode">
+          <button type="button" data-mesh-mode="all" class="is-active" aria-pressed="true">All activity</button>
+          <button type="button" data-mesh-mode="threats" aria-pressed="false">Threats</button>
+        </div>
+      </div>
+      <div class="signal-mesh" id="signalMesh" data-mode="all" role="img" aria-label="Abstract animated network visualization, not based on user locations">
+        <div class="mesh-grid"></div><div class="mesh-orbit orbit-one"></div><div class="mesh-orbit orbit-two"></div>
+        <div class="mesh-contour contour-one"></div><div class="mesh-contour contour-two"></div><div class="mesh-contour contour-three"></div>
+        <span class="mesh-link link-one"></span><span class="mesh-link link-two"></span><span class="mesh-link link-three"></span>
+        <span class="mesh-node node-one"></span><span class="mesh-node node-two"></span><span class="mesh-node node-three"></span><span class="mesh-node node-four"></span><span class="mesh-node node-five"></span><span class="mesh-node node-six"></span>
+        <div class="mesh-center"><span class="center-pulse"></span><strong id="meshTotal">—</strong><small>SCANS IN RANGE</small></div>
+        <div class="mesh-coordinate coord-a">TLM / 01</div><div class="mesh-coordinate coord-b">SIGNAL FIELD</div>
+      </div>
+      <div class="mesh-foot"><span><i class="legend-pulse"></i> Aggregate activity</span><span>Illustrative mesh · no geographic data</span></div>
+    </article>
+
+    <article class="command-panel verdict-panel">
+      <div class="panel-heading"><div><p class="panel-overline">VERDICT DISTRIBUTION</p><h2>Risk composition</h2></div></div>
+      <div class="verdict-chart-wrap"><canvas id="verdictChart" aria-label="Safe, suspicious, and scam scan distribution"></canvas><div class="verdict-center"><strong id="verdictTotal">—</strong><span>SCANS</span></div></div>
+      <div class="verdict-legend" id="verdictLegend"></div>
+    </article>
+  </section>
+
+  <section class="activity-grid">
+    <article class="command-panel activity-panel">
+      <div class="panel-heading"><div><p class="panel-overline">DAILY TELEMETRY</p><h2>Date-wise scan activity</h2></div><span class="chart-unit">SCANS / DAY</span></div>
+      <div class="line-chart-wrap"><canvas id="activityChart" aria-label="Daily safe, suspicious, and scam scan counts"></canvas></div>
+    </article>
+    <article class="command-panel channels-panel">
+      <div class="panel-heading"><div><p class="panel-overline">DETECTION CHANNELS</p><h2>Scans by type</h2></div></div>
+      <div id="channelList" class="channel-list" aria-live="polite"></div>
+    </article>
+  </section>
+
+  <footer class="privacy-note">This dashboard contains aggregate statistics only. No individual messages, URLs, payment details, usernames, or personal scan records are included.</footer>
+</main>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/chart.umd.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/universal_security.js') }}"></script>
+{% endblock %}
