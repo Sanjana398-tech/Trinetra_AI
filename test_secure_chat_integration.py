@@ -122,6 +122,22 @@ class SecureChatIntegrationTests(unittest.TestCase):
             "type must be message, url, upi, qr, image, or voice",
         )
 
+    def test_connection_token_remains_valid_until_consent_is_revoked(self):
+        self.app.config["SECURE_CHAT_TOKEN_TTL_SECONDS"] = 1
+        _, token = self._enable_and_exchange()
+        time.sleep(1.2)
+
+        response = self.client.post(
+            "/api/secure-chat/v1/detect",
+            json={"type": "unsupported"},
+            headers={
+                **self._service_headers(),
+                "Authorization": f"Bearer {token}",
+            },
+        )
+
+        self.assertEqual(response.status_code, 400, response.get_json())
+
     def test_real_detectors_return_normalized_results_and_account_attribution(self):
         _, token = self._enable_and_exchange()
         headers = {

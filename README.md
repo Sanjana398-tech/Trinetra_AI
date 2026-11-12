@@ -367,7 +367,9 @@ verify that state before exchanging the code.
 The Secure Chat backend exchanges the code with `POST /api/secure-chat/v1/token`
 using `X-Secure-Chat-Key: <SECURE_CHAT_API_KEY>` and JSON `{ "code": "..." }`.
 It then calls `POST /api/secure-chat/v1/detect` with the same service header
-and `Authorization: Bearer <access_token>`. Text, URL, and UPI scans use JSON:
+and `Authorization: Bearer <access_token>`. The signed account token remains valid
+while the user has consent enabled; revoking consent immediately invalidates it.
+Authorization codes remain single-use and short-lived. Text, URL, and UPI scans use JSON:
 
 - `{ "type": "message", "text": "...", "language": "en" }`
 - `{ "type": "url", "url": "https://...", "language": "en" }`
@@ -393,12 +395,12 @@ detection, not an API error. Scam and suspicious alerts name the analyzed conten
 clients should display `alert` in the conversation whenever `should_warn` is true.
 Message responses also include `safe_probability` and
 `scam_probability` for clients using the legacy message-result fields. Secure Chat should show
-`alert` in the conversation when `should_warn` is true; it is null for safe results. The account token is signed, short-lived, tied to the
+`alert` in the conversation when `should_warn` is true; it is null for safe results. The account token is signed, tied to the
 consenting Trinetra user, and checked against the current opt-in status on every
-detection. Users can revoke access from the same consent page.
+detection. It stays valid until the user revokes access from the same consent page.
 
 Configure `SECURE_CHAT_API_KEY`, `SECURE_CHAT_ORIGIN` (the exact deployed browser
-origin, no wildcard), `SECURE_CHAT_REDIRECT_URI`, and the code/token TTL values
+origin, no wildcard), `SECURE_CHAT_REDIRECT_URI`, and the authorization code TTL
 from `.env.example`. Existing JSON API routes retain CORS support only for that
 same configured origin; server-to-server requests do not depend on CORS.
 

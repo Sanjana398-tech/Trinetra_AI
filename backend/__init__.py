@@ -139,6 +139,16 @@ def create_app(config_name: str = None) -> Flask:
 
     # ---- Extensions ------------------------------------------------------
     db.init_app(app)
+    try:
+        with app.app_context():
+            engine = db.engine
+            app.logger.info(
+                "SQLAlchemy engine configured: dialect=%s driver=%s",
+                engine.dialect.name,
+                engine.dialect.driver,
+            )
+    except Exception:
+        app.logger.warning("Could not inspect SQLAlchemy engine dialect and driver")
     csrf.init_app(app)
 
     login_manager.init_app(app)

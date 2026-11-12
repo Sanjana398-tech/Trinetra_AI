@@ -208,10 +208,7 @@ def _verify_user_token():
         return None, (jsonify(error="A valid account token is required"), 401)
 
     try:
-        claims = _serializer().loads(
-            token,
-            max_age=current_app.config["SECURE_CHAT_TOKEN_TTL_SECONDS"],
-        )
+        claims = _serializer().loads(token)
     except (BadSignature, SignatureExpired):
         return None, (jsonify(error="Invalid or expired account token"), 401)
 
@@ -435,7 +432,6 @@ def exchange_authorization_code():
     return jsonify(
         access_token=token,
         token_type="Bearer",
-        expires_in=current_app.config["SECURE_CHAT_TOKEN_TTL_SECONDS"],
         trinetra_user_id=user.id,
     ), 200
 
